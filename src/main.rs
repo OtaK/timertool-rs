@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 
 use log::{error, debug, info};
 
@@ -43,7 +43,7 @@ fn main(args: Opts) -> std::io::Result<()> {
         let mut max_res = 0u32;
         let mut cur_res = 0u32;
         unsafe {
-            winapi::um::nttimer::NtQueryTimerResolution(&mut min_res, &mut max_res, &mut cur_res);
+            ntapi::ntexapi::NtQueryTimerResolution(&mut min_res, &mut max_res, &mut cur_res);
         }
 
         info!("System Timer Values: min [{}μs] / max [{}μs] / cur [{}μs]", min_res, max_res, cur_res);
@@ -83,7 +83,7 @@ fn main(args: Opts) -> std::io::Result<()> {
         drop(args);
 
         unsafe {
-            winapi::um::nttimer::NtSetTimerResolution(timer_value, 1, &mut cur_res);
+            ntapi::ntexapi::NtSetTimerResolution(timer_value, 1, &mut cur_res);
         }
 
         info!("New timer value set: {}μs", cur_res);
