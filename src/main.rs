@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use log::{error, debug, info};
 
 mod win_elevated;
@@ -111,6 +113,7 @@ fn install(timer_value: Option<u32>) -> std::io::Result<()> {
     if let Some(timer_value) = timer_value {
         start_args.push_str(&format!(" --timer {}", timer_value));
     }
+
     // Write registry entry in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
     let startup = get_startup_key()?;
     debug!("Writing registry value at HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run: TimerSet = {}", start_args);
