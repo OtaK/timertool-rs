@@ -1,5 +1,11 @@
 use log::info;
 
+#[cfg(not(windows))]
+fn main() {
+    panic!("This software is only compatible with Windows.");
+}
+
+#[cfg(windows)]
 fn main() {
     std::env::set_var("RUST_LOG", "info");
     pretty_env_logger::init();
