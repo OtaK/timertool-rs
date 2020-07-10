@@ -308,8 +308,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "timertool-rs"
-version = "0.1.0"
+name = "timerset"
+version = "0.2.0"
 dependencies = [
  "log",
  "paw",

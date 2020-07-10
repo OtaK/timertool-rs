@@ -5,6 +5,7 @@ use log::{error, debug, info};
 mod win_elevated;
 
 #[derive(Debug, structopt::StructOpt)]
+#[structopt(author = "Mathieu Amiot <amiot.mathieu@gmail.com>")]
 /// TimerSet allows you to change your NT Kernel system timer
 struct Opts {
     #[structopt(short, long)]
@@ -16,7 +17,7 @@ struct Opts {
     uninstall: bool,
 
     #[structopt(short, long)]
-    /// Allows to set a custom timer value. It must be between the bounds of allowed timer values.
+    /// Allows to set a custom timer value in μs. Will be clamped between the bounds of allowed timer values.
     /// Also note that sometimes, setting high timer values are rejected by the system and will be lowered down according to unknown factors (windows ancient magic????)
     timer: Option<u32>,
 

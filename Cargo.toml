@@ -1,13 +1,8 @@
 [package]
-name = "timertool-rs"
-version = "0.1.0"
+name = "timerset"
+version = "0.2.0"
 authors = ["Mathieu Amiot <amiot.mathieu@gmail.com>"]
 edition = "2018"
-default-run = "timerset"
-
-[[bin]]
-name = "timerset"
-path = "src/main.rs"
 
 [dependencies]
 log = "0.4"
