@@ -1,12 +1,16 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(feature = "enable_log"), windows_subsystem = "windows")]
 
-use log::{error, debug, info};
+use log::{error, info};
 
 mod win_elevated;
+mod timer;
+mod install;
+mod standby;
 
 #[derive(Debug, structopt::StructOpt)]
 #[structopt(author = "Mathieu Amiot <amiot.mathieu@gmail.com>")]
 /// TimerSet allows you to change your NT Kernel system timer
+/// Also allows you to monitor Windows Standby List and clean it up when needed
 struct Opts {
     #[structopt(short, long)]
     /// Installs TimerSet to your system and runs it on startup
@@ -18,8 +22,31 @@ struct Opts {
 
     #[structopt(short, long)]
     /// Allows to set a custom timer value in μs. Will be clamped between the bounds of allowed timer values.
-    /// Also note that sometimes, setting high timer values are rejected by the system and will be lowered down according to unknown factors (windows ancient magic????)
+    /// Also note that sometimes, setting high timer values are rejected by the system and will be lowered down depending
+    /// on which clock source your system is using (TSC tends to lower values by 5μs, HPET does not for instance)
     timer: Option<u32>,
+
+    #[structopt(long = "islc")]
+    /// Enables Windows Standby List periodic cleaning.
+    /// It is akin to how ISLC by Wagnard works.
+    /// Please note that when enabling this, the program will **NOT** be idle at all times and will periodically
+    /// poll the system memory to check whether a cleanup is needed or not.
+    clean_standby_list: bool,
+
+    #[structopt(long = "islc-timer", default_value = "10")]
+    /// Standby List periodic cleaning poll interval.
+    /// Defaults to 10 seconds which should be enough for most systems without impacting performance.
+    clean_standby_list_poll_freq: u64,
+
+    #[structopt(long = "cscm", default_value = "1024")]
+    /// Cached memory threshold where the Windows Standby List will be cleared (in MB)
+    /// Defaults to 1024MB (1GB)
+    clear_standby_cached_mem: u32,
+
+    #[structopt(long = "csfm", default_value = "1024")]
+    /// Free memory threshold where the Windows Standby List will be cleared (in MB)
+    /// Defaults to 1024MB (1GB)
+    clear_standby_free_mem: u32,
 
     #[structopt(short, long)]
     /// Prints the possible timer value range for your system.
@@ -30,7 +57,7 @@ struct Opts {
 
 #[cfg(not(windows))]
 fn main() {
-    panic!("This software is only compatible with Windows.");
+    panic!("No idea how you compiled this but this software is only compatible with Windows.");
 }
 
 #[cfg(windows)]
@@ -39,29 +66,17 @@ fn main(args: Opts) -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
     pretty_env_logger::init();
     {
-        let mut min_res = 0u32;
-        let mut max_res = 0u32;
-        let mut cur_res = 0u32;
-        unsafe {
-            ntapi::ntexapi::NtQueryTimerResolution(&mut min_res, &mut max_res, &mut cur_res);
-        }
-
-        info!("System Timer Values: min [{}μs] / max [{}μs] / cur [{}μs]", min_res, max_res, cur_res);
+        let mut timer_info = timer::TimerResolutionInfo::fetch()?;
+        info!("{}", timer_info);
 
         if args.values {
             return Ok(());
         }
 
         let timer_value = if let Some(timer) = args.timer {
-            if timer > min_res {
-                min_res
-            } else if timer < max_res {
-                max_res
-            } else {
-                timer
-            }
+            timer_info.clamp_timer_value(timer)
         } else {
-            max_res
+            timer_info.max
         };
 
         info!("Chosen timer value: {}μs", timer_value);
@@ -71,80 +86,33 @@ fn main(args: Opts) -> std::io::Result<()> {
                 error!("You need to start this app with administrator permissions to install the program on your system.");
             } else {
                 if args.install {
-                    install(args.timer.map(|_| {
+                    install::install(args.timer.map(move |_| {
                         timer_value
                     }))?;
                 } else if args.uninstall { // Revert install steps
-                    uninstall()?;
+                    install::uninstall()?;
                 }
             }
         }
 
+        timer_info.apply_timer(timer_value)?;
+        info!("New timer value set: {}μs", timer_info.cur);
+    }
+
+    if args.clean_standby_list {
+        let cleaner = standby::StandbyListCleaner::default()
+            .standby_list_size_threshold(args.clear_standby_cached_mem)
+            .free_memory_size_threshold(args.clear_standby_free_mem)
+            .poll_interval(args.clean_standby_list_poll_freq);
+
         drop(args);
-
-        unsafe {
-            ntapi::ntexapi::NtSetTimerResolution(timer_value, 1, &mut cur_res);
-        }
-
-        info!("New timer value set: {}μs", cur_res);
-    }
-    info!("Cleaning up resources and parking till the end of time...");
-    std::thread::park();
-
-    Ok(())
-}
-
-fn install(timer_value: Option<u32>) -> std::io::Result<()> {
-    // Copy exe to %ProgramFiles%\TimerSet\TimerSet.exe
-    let current_exe_path = std::env::current_exe()?;
-    debug!("Current exe path: {:?}", current_exe_path);
-
-    let mut dest_path: std::path::PathBuf = std::env::var("PROGRAMFILES").unwrap().into();
-    dest_path.push("TimerSet");
-    info!("Installing TimerSet at: {:?}", dest_path);
-    debug!("Creating app folder");
-    std::fs::create_dir_all(dest_path.clone())?;
-    dest_path.push("TimerSet.exe");
-
-    debug!("Moving timerset.exe from {:?} to {:?}", current_exe_path, dest_path);
-    std::fs::copy(current_exe_path, dest_path.clone())?;
-
-    let mut start_args: String = dest_path.to_str().unwrap().into();
-
-    if let Some(timer_value) = timer_value {
-        start_args.push_str(&format!(" --timer {}", timer_value));
+        info!("Cleaned up resources and starting memory monitoring...");
+        cleaner.monitor_and_clean()?;
+    } else {
+        drop(args);
+        info!("Cleaned up resources and parking till the end of time...");
+        std::thread::park();
     }
 
-    // Write registry entry in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
-    let startup = get_startup_key()?;
-    debug!("Writing registry value at HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run: TimerSet = {}", start_args);
-    startup.set_value("TimerSet", &start_args)?;
-
-    info!("Installation complete.");
     Ok(())
-}
-
-fn uninstall() -> std::io::Result<()> {
-    // Unload from boot
-    let startup = get_startup_key()?;
-    let _ = startup.delete_value("TimerSet"); // Ignore errors since we don't care that it's been removed already
-
-    // Delete files
-    let mut dest_path: std::path::PathBuf = std::env::var("PROGRAMFILES").unwrap().into();
-    dest_path.push("TimerSet");
-    debug!("Installation path to be removed: {:?}", dest_path);
-    let _ = std::fs::remove_dir_all(dest_path);
-
-    info!("Uninstall complete.");
-
-    Ok(())
-}
-
-fn get_startup_key() -> std::io::Result<winreg::RegKey> {
-    use winreg::enums::*;
-    let hklm = winreg::RegKey::predef(HKEY_LOCAL_MACHINE);
-    hklm.open_subkey_with_flags(
-        "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
-        KEY_SET_VALUE
-    )
 }
