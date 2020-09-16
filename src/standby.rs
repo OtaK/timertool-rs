@@ -1,17 +1,15 @@
 use ntapi::ntexapi::{
+    NtQuerySystemInformation, NtSetSystemInformation, SystemMemoryListInformation,
     SYSTEM_MEMORY_LIST_INFORMATION,
-    SystemMemoryListInformation,
-    NtQuerySystemInformation,
-    NtSetSystemInformation,
 };
 
 use winapi::um::{
-    processthreadsapi::{GetCurrentProcess, OpenProcessToken},
-    winbase::LookupPrivilegeValueA,
-    securitybaseapi::AdjustTokenPrivileges,
     handleapi::CloseHandle,
-    winnt::{SE_PRIVILEGE_ENABLED, TOKEN_QUERY, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES},
+    processthreadsapi::{GetCurrentProcess, OpenProcessToken},
+    securitybaseapi::AdjustTokenPrivileges,
     sysinfoapi::{GetSystemInfo, SYSTEM_INFO},
+    winbase::LookupPrivilegeValueA,
+    winnt::{SE_PRIVILEGE_ENABLED, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY},
 };
 
 use log::{debug, info};
@@ -28,8 +26,14 @@ impl std::fmt::Debug for SystemMemoryListInformationWrapper {
             .field("ModifiedPageCount", &self.0.ModifiedPageCount)
             .field("BadPageCount", &self.0.BadPageCount)
             .field("PageCountByPriority", &self.0.PageCountByPriority)
-            .field("RepurposedPagesByPriority", &self.0.RepurposedPagesByPriority)
-            .field("ModifiedPageCountPageFile", &self.0.ModifiedPageCountPageFile)
+            .field(
+                "RepurposedPagesByPriority",
+                &self.0.RepurposedPagesByPriority,
+            )
+            .field(
+                "ModifiedPageCountPageFile",
+                &self.0.ModifiedPageCountPageFile,
+            )
             .finish()
     }
 }
@@ -74,19 +78,27 @@ impl StandbyListCleaner {
         debug!("Beginning to upgrade security token...");
         let process_hwnd = GetCurrentProcess();
         let mut token_hwnd = winapi::shared::ntdef::NULL;
-        let result = OpenProcessToken(process_hwnd, TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &mut token_hwnd);
+        let result = OpenProcessToken(
+            process_hwnd,
+            TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES,
+            &mut token_hwnd,
+        );
         if result == winapi::shared::minwindef::FALSE {
             return Err(std::io::Error::last_os_error());
         }
 
         let mut luid = winapi::shared::ntdef::LUID::default();
-        let lp_name = std::ffi::CStr::from_bytes_with_nul_unchecked(b"SeProfileSingleProcessPrivilege\0");
+        let lp_name =
+            std::ffi::CStr::from_bytes_with_nul_unchecked(b"SeProfileSingleProcessPrivilege\0");
         let result = LookupPrivilegeValueA(0 as _, lp_name.as_ptr() as _, &mut luid as _);
         if result == winapi::shared::minwindef::FALSE {
             return Err(std::io::Error::last_os_error());
         }
 
-        debug!("LookupPrivilegeValueA returned LUID Low = {:x} / High = {:x}", luid.LowPart, luid.HighPart);
+        debug!(
+            "LookupPrivilegeValueA returned LUID Low = {:x} / High = {:x}",
+            luid.LowPart, luid.HighPart
+        );
 
         let mut new_privileges = TOKEN_PRIVILEGES::default();
         let mut old_privileges = TOKEN_PRIVILEGES::default();
@@ -101,7 +113,7 @@ impl StandbyListCleaner {
             &mut new_privileges as _,
             std::mem::size_of_val(&new_privileges) as _,
             &mut old_privileges as _,
-            &mut dw_buffer_length as _
+            &mut dw_buffer_length as _,
         );
 
         if result == winapi::shared::minwindef::FALSE {
@@ -119,7 +131,7 @@ impl StandbyListCleaner {
             &mut old_privileges,
             dw_buffer_length,
             winapi::shared::ntdef::NULL as _,
-            0 as _
+            0 as _,
         );
 
         if result == winapi::shared::minwindef::FALSE {
@@ -152,7 +164,9 @@ impl StandbyListCleaner {
         let mut ret_len = 0u32;
 
         let mut system_info = SYSTEM_INFO::default();
-        unsafe { GetSystemInfo(&mut system_info as _); }
+        unsafe {
+            GetSystemInfo(&mut system_info as _);
+        }
         debug!("System page size is {}", system_info.dwPageSize);
 
         let page_size = system_info.dwPageSize as usize;
@@ -166,11 +180,12 @@ impl StandbyListCleaner {
                     SystemMemoryListInformation,
                     &mut system_information as *mut SYSTEM_MEMORY_LIST_INFORMATION as _,
                     std::mem::size_of::<SYSTEM_MEMORY_LIST_INFORMATION>() as _,
-                    &mut ret_len as _
+                    &mut ret_len as _,
                 )
             };
 
-            debug!("NtQuerySystemInformation(\n{}, \n{:?}, \n{}, \n{}\n) -> {}",
+            debug!(
+                "NtQuerySystemInformation(\n{}, \n{:?}, \n{}, \n{}\n) -> {}",
                 SystemMemoryListInformation,
                 SystemMemoryListInformationWrapper(system_information),
                 std::mem::size_of::<SYSTEM_MEMORY_LIST_INFORMATION>(),
@@ -183,7 +198,8 @@ impl StandbyListCleaner {
             }
 
             let list_mem = system_information.PageCountByPriority.iter().sum::<usize>() * page_size;
-            let free_mem = system_information.ZeroPageCount * page_size + system_information.FreePageCount * page_size;
+            let free_mem = system_information.ZeroPageCount * page_size
+                + system_information.FreePageCount * page_size;
 
             debug!("Free memory: {:.2}MB", free_mem / 1_000_000);
             debug!("Standby List memory: {:.2}MB", list_mem / 1_000_000);
@@ -191,18 +207,12 @@ impl StandbyListCleaner {
             if free_mem < self.freemem_threshold && list_mem > self.standbylist_threshold {
                 info!("Conditions met, now freeing standby list");
                 let result = unsafe {
-                    NtSetSystemInformation(
-                        SystemMemoryListInformation,
-                        cmd_ptr as _,
-                        cmd_len,
-                    )
+                    NtSetSystemInformation(SystemMemoryListInformation, cmd_ptr as _, cmd_len)
                 };
 
-                debug!("NtSetSystemInformation({}, {:?}, {}) -> {}",
-                    SystemMemoryListInformation,
-                    cmd_ptr,
-                    cmd_len,
-                    result
+                debug!(
+                    "NtSetSystemInformation({}, {:?}, {}) -> {}",
+                    SystemMemoryListInformation, cmd_ptr, cmd_len, result
                 );
 
                 if result == winapi::shared::ntstatus::STATUS_PRIVILEGE_NOT_HELD {

@@ -2,10 +2,10 @@
 
 use log::{error, info};
 
-mod win_elevated;
-mod timer;
 mod install;
 mod standby;
+mod timer;
+mod win_elevated;
 
 #[derive(Debug, structopt::StructOpt)]
 #[structopt(author = "Mathieu Amiot <amiot.mathieu@gmail.com>")]
@@ -54,7 +54,6 @@ pub struct Opts {
     values: bool,
 }
 
-
 #[cfg(not(windows))]
 fn main() {
     panic!("No idea how you compiled this but this software is only compatible with Windows.");
@@ -88,12 +87,11 @@ fn main(mut args: Opts) -> std::io::Result<()> {
         if args.install || args.uninstall {
             if !win_elevated::is_app_elevated() {
                 error!("You need to start this app with administrator permissions to install the program on your system.");
-            } else {
-                if args.install {
-                    install::install(&args)?;
-                } else if args.uninstall { // Revert install steps
-                    install::uninstall()?;
-                }
+            } else if args.install {
+                install::install(&args)?;
+            } else if args.uninstall {
+                // Revert install steps
+                install::uninstall()?;
             }
         }
 
