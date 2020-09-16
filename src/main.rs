@@ -11,7 +11,7 @@ mod standby;
 #[structopt(author = "Mathieu Amiot <amiot.mathieu@gmail.com>")]
 /// TimerSet allows you to change your NT Kernel system timer
 /// Also allows you to monitor Windows Standby List and clean it up when needed
-struct Opts {
+pub struct Opts {
     #[structopt(short, long)]
     /// Installs TimerSet to your system and runs it on startup
     install: bool,
@@ -62,7 +62,7 @@ fn main() {
 
 #[cfg(windows)]
 #[paw::main]
-fn main(args: Opts) -> std::io::Result<()> {
+fn main(mut args: Opts) -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
     pretty_env_logger::init();
     {
@@ -73,8 +73,12 @@ fn main(args: Opts) -> std::io::Result<()> {
             return Ok(());
         }
 
+        if let Some(timer) = args.timer.as_mut() {
+            *timer = timer_info.clamp_timer_value(*timer);
+        }
+
         let timer_value = if let Some(timer) = args.timer {
-            timer_info.clamp_timer_value(timer)
+            timer
         } else {
             timer_info.max
         };
@@ -86,9 +90,7 @@ fn main(args: Opts) -> std::io::Result<()> {
                 error!("You need to start this app with administrator permissions to install the program on your system.");
             } else {
                 if args.install {
-                    install::install(args.timer.map(move |_| {
-                        timer_value
-                    }))?;
+                    install::install(&args)?;
                 } else if args.uninstall { // Revert install steps
                     install::uninstall()?;
                 }
@@ -100,6 +102,11 @@ fn main(args: Opts) -> std::io::Result<()> {
     }
 
     if args.clean_standby_list {
+        if !win_elevated::is_app_elevated() {
+            error!("You need to start this app with administrator permissions to use the standby list cleaning feature.");
+            return Ok(());
+        }
+
         let cleaner = standby::StandbyListCleaner::default()
             .standby_list_size_threshold(args.clear_standby_cached_mem)
             .free_memory_size_threshold(args.clear_standby_free_mem)

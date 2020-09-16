@@ -8,7 +8,7 @@ pub struct TimerResolutionInfo {
 
 impl std::fmt::Display for TimerResolutionInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "System Timer Values: min [{}μs] / max [{}μs] / cur [{}μs]", self.min, self.max, self.cur)
+        write!(f, "System Timer Values: min [{}μs] / max [{}μs] / cur [{}μs]", self.min, self.max, self.cur)
     }
 }
 

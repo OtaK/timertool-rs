@@ -11,7 +11,7 @@ use winapi::um::winnt::{TokenElevation, HANDLE, TOKEN_ELEVATION, TOKEN_QUERY};
 
 /// Returns true if the current process has admin rights, otherwise false.
 pub fn is_app_elevated() -> bool {
-    _is_app_elevated().unwrap_or(false)
+    _is_app_elevated().unwrap_or_default()
 }
 
 /// On success returns a bool indicating if the current process has admin rights.

@@ -1,6 +1,6 @@
 use log::{debug, info};
 
-pub fn install(timer_value: Option<u32>) -> std::io::Result<()> {
+pub fn install(args: &crate::Opts) -> std::io::Result<()> {
     // Copy exe to %ProgramFiles%\TimerSet\TimerSet.exe
     let current_exe_path = std::env::current_exe()?;
     debug!("Current exe path: {:?}", current_exe_path);
@@ -17,7 +17,7 @@ pub fn install(timer_value: Option<u32>) -> std::io::Result<()> {
 
     let mut start_args: String = dest_path.to_str().unwrap().into();
 
-    if let Some(timer_value) = timer_value {
+    if let Some(timer_value) = args.timer {
         start_args.push_str(&format!(" --timer {}", timer_value));
     }
 

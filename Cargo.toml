@@ -11,13 +11,21 @@ enable_log = []
 log = "0.4"
 pretty_env_logger = "0.4"
 paw = "1.0"
-structopt = { version = "0.3", default-features = false, features = ["paw"] }
 winreg = "0.7"
-ntapi = "0.3"
+
+[dependencies.structopt]
+version = "0.3"
+default-features = false
+features = ["paw"]
+
+[dependencies.ntapi]
+version = "0.3"
+default-features = false
 
 [dependencies.winapi]
 version = "0.3"
-features = ["ntdef", "handleapi", "processthreadsapi", "winnt", "securitybaseapi", "impl-default"]
+default-features = false
+features = ["ntdef", "sysinfoapi", "handleapi", "processthreadsapi", "winnt", "securitybaseapi"]
 
 [profile.release]
 lto = true
