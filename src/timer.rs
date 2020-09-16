@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct TimerResolutionInfo {
     pub cur: u32,
@@ -8,7 +7,11 @@ pub struct TimerResolutionInfo {
 
 impl std::fmt::Display for TimerResolutionInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "System Timer Values: min [{}μs] / max [{}μs] / cur [{}μs]", self.min, self.max, self.cur)
+        write!(
+            f,
+            "System Timer Values: min [{}μs] / max [{}μs] / cur [{}μs]",
+            self.min, self.max, self.cur
+        )
     }
 }
 
@@ -17,11 +20,8 @@ impl TimerResolutionInfo {
         let mut min = 0u32;
         let mut max = 0u32;
         let mut cur = 0u32;
-        let status = unsafe { ntapi::ntexapi::NtQueryTimerResolution(
-            &mut min,
-            &mut max,
-            &mut cur
-        )};
+        let status =
+            unsafe { ntapi::ntexapi::NtQueryTimerResolution(&mut min, &mut max, &mut cur) };
 
         if status == winapi::shared::ntstatus::STATUS_SUCCESS {
             Ok(Self { min, max, cur })
@@ -32,9 +32,7 @@ impl TimerResolutionInfo {
 
     pub fn apply_timer(&mut self, value: u32) -> std::io::Result<()> {
         let value = self.clamp_timer_value(value);
-        let status = unsafe {
-            ntapi::ntexapi::NtSetTimerResolution(value, 1, &mut self.cur)
-        };
+        let status = unsafe { ntapi::ntexapi::NtSetTimerResolution(value, 1, &mut self.cur) };
 
         if status != winapi::shared::ntstatus::STATUS_SUCCESS {
             return Err(std::io::Error::last_os_error());

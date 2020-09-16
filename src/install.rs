@@ -12,7 +12,10 @@ pub fn install(args: &crate::Opts) -> std::io::Result<()> {
     std::fs::create_dir_all(dest_path.clone())?;
     dest_path.push("TimerSet.exe");
 
-    debug!("Moving timerset.exe from {:?} to {:?}", current_exe_path, dest_path);
+    debug!(
+        "Moving timerset.exe from {:?} to {:?}",
+        current_exe_path, dest_path
+    );
     std::fs::copy(current_exe_path, dest_path.clone())?;
 
     let mut start_args: String = dest_path.to_str().unwrap().into();
@@ -51,6 +54,6 @@ fn get_startup_key() -> std::io::Result<winreg::RegKey> {
     let hklm = winreg::RegKey::predef(HKEY_LOCAL_MACHINE);
     hklm.open_subkey_with_flags(
         "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
-        KEY_SET_VALUE
+        KEY_SET_VALUE,
     )
 }
