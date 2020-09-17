@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "enable_log"), windows_subsystem = "windows")]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use log::{error, info};
 
@@ -63,7 +63,6 @@ fn main() {
 #[cfg(windows)]
 #[paw::main]
 fn main(mut args: Opts) -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "debug");
     pretty_env_logger::init();
     {
         let mut timer_info = timer::TimerResolutionInfo::fetch()?;
