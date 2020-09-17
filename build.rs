@@ -1,5 +1,14 @@
+#[cfg(not(windows))]
 fn main() {
-    if cfg!(not(windows)) {
-        panic!("No idea how you compiled this but this software is only compatible with Windows.");
-    }
+    panic!("This software is only compatible with Windows.");
+}
+
+
+#[cfg(windows)]
+fn main() {
+    let mut res = winres::WindowsResource::new();
+    res.set_manifest_file("./assets/timerset.manifest");
+    res.set_icon("./assets/timerset-icon.ico");
+
+    res.compile().unwrap();
 }
