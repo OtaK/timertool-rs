@@ -19,7 +19,6 @@ macro_rules! w32_ok {
         }
     }};
 
-
     (BOOL $call: expr) => {{
         let result = unsafe { $call };
         if result == winapi::shared::minwindef::TRUE {
