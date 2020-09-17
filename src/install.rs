@@ -1,5 +1,17 @@
 use log::{debug, info};
 
+fn args_to_string(args: Vec<String>) -> String {
+    args.into_iter()
+        .enumerate()
+        .fold(String::new(), |mut s, (i, arg)| {
+            if i > 0 {
+                s.push(' ');
+            }
+            s.push_str(&arg);
+            s
+        })
+}
+
 pub fn install(args: &crate::Opts) -> std::io::Result<()> {
     // Copy exe to %ProgramFiles%\TimerSet\TimerSet.exe
     let current_exe_path = std::env::current_exe()?;
@@ -18,14 +30,30 @@ pub fn install(args: &crate::Opts) -> std::io::Result<()> {
     );
     std::fs::copy(current_exe_path, dest_path.clone())?;
 
-    let mut start_args: String = dest_path.to_str().unwrap().into();
+    let mut start_args = vec![
+        dest_path.to_str().unwrap().into(),
+    ];
 
     if let Some(timer_value) = args.timer {
-        start_args.push_str(&format!(" --timer {}", timer_value));
+        start_args.push(format!("--timer {}", timer_value));
+    }
+
+    if args.clean_standby_list {
+        start_args.push("--islc".to_string());
+        if args.clean_standby_list_poll_freq != 10 {
+            start_args.push(format!("--islc-timer {}", args.clean_standby_list_poll_freq));
+        }
+        if args.clear_standby_cached_mem != 1024 {
+            start_args.push(format!("--cscm {}", args.clear_standby_cached_mem));
+        }
+        if args.clear_standby_free_mem != 1024 {
+            start_args.push(format!("--csfm {}", args.clear_standby_free_mem));
+        }
     }
 
     // Write registry entry in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
     let startup = get_startup_key()?;
+    let start_args = args_to_string(start_args);
     debug!("Writing registry value at HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run: TimerSet = {}", start_args);
     startup.set_value("TimerSet", &start_args)?;
 
