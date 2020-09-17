@@ -4,6 +4,10 @@ version = "0.3.0"
 authors = ["Mathieu Amiot <amiot.mathieu@gmail.com>"]
 edition = "2018"
 
+[package.metadata.winres]
+OriginalFileName = "TimerSet.exe"
+LegalCopyright = "Copyright Mathieu Amiot © 2020"
+
 [features]
 enable_log = []
 
@@ -21,11 +25,15 @@ features = ["paw"]
 [dependencies.ntapi]
 version = "0.3"
 default-features = false
+features = ["user"]
 
 [dependencies.winapi]
 version = "0.3"
 default-features = false
 features = ["ntdef", "sysinfoapi", "handleapi", "processthreadsapi", "winnt", "securitybaseapi"]
+
+[build-dependencies]
+winres = "0.1"
 
 [profile.release]
 lto = true
