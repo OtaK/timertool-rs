@@ -8,9 +8,6 @@ edition = "2018"
 OriginalFileName = "TimerSet.exe"
 LegalCopyright = "Copyright Mathieu Amiot © 2020"
 
-[features]
-enable_log = []
-
 [dependencies]
 log = "0.4"
 pretty_env_logger = "0.4"
