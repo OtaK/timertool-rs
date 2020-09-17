@@ -29,11 +29,8 @@ pub struct QueryAccessToken(HANDLE);
 impl QueryAccessToken {
     pub fn from_current_process() -> Result<Self, Error> {
         let mut handle: HANDLE = ptr::null_mut();
-        if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut handle) } != 0 {
-            Ok(Self(handle))
-        } else {
-            Err(Error::last_os_error())
-        }
+        crate::w32_ok!(BOOL OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut handle))?;
+        Ok(Self(handle))
     }
 
     /// On success returns a bool indicating if the access token has elevated privilidges.
@@ -42,23 +39,15 @@ impl QueryAccessToken {
         let mut elevation = TOKEN_ELEVATION::default();
         let size = std::mem::size_of::<TOKEN_ELEVATION>() as u32;
         let mut ret_size = size;
+        crate::w32_ok!(BOOL GetTokenInformation(
+            self.0,
+            TokenElevation,
+            &mut elevation as *mut _ as *mut _,
+            size,
+            &mut ret_size,
+        ))?;
 
-        let token_res = unsafe {
-            GetTokenInformation(
-                self.0,
-                TokenElevation,
-                // The weird looking repetition of `as *mut _` is casting the reference to a c_void pointer.
-                &mut elevation as *mut _ as *mut _,
-                size,
-                &mut ret_size,
-            )
-        };
-
-        if token_res != 0 {
-            Ok(elevation.TokenIsElevated != 0)
-        } else {
-            Err(Error::last_os_error())
-        }
+        Ok(elevation.TokenIsElevated != 0)
     }
 }
 

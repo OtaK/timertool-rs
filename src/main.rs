@@ -6,6 +6,7 @@ mod install;
 mod standby;
 mod timer;
 mod win_elevated;
+mod macros;
 
 #[derive(Debug, structopt::StructOpt)]
 #[structopt(author = "Mathieu Amiot <amiot.mathieu@gmail.com>")]
@@ -76,11 +77,7 @@ fn main(mut args: Opts) -> std::io::Result<()> {
             *timer = timer_info.clamp_timer_value(*timer);
         }
 
-        let timer_value = if let Some(timer) = args.timer {
-            timer
-        } else {
-            timer_info.max
-        };
+        let timer_value = args.timer.unwrap_or(timer_info.max);
 
         info!("Chosen timer value: {}μs", timer_value);
 

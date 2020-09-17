@@ -20,24 +20,13 @@ impl TimerResolutionInfo {
         let mut min = 0u32;
         let mut max = 0u32;
         let mut cur = 0u32;
-        let status =
-            unsafe { ntapi::ntexapi::NtQueryTimerResolution(&mut min, &mut max, &mut cur) };
-
-        if status == winapi::shared::ntstatus::STATUS_SUCCESS {
-            Ok(Self { min, max, cur })
-        } else {
-            Err(std::io::Error::last_os_error())
-        }
+        crate::w32_ok!(ntapi::ntexapi::NtQueryTimerResolution(&mut min, &mut max, &mut cur))?;
+        Ok(Self { min, max, cur })
     }
 
     pub fn apply_timer(&mut self, value: u32) -> std::io::Result<()> {
         let value = self.clamp_timer_value(value);
-        let status = unsafe { ntapi::ntexapi::NtSetTimerResolution(value, 1, &mut self.cur) };
-
-        if status != winapi::shared::ntstatus::STATUS_SUCCESS {
-            return Err(std::io::Error::last_os_error());
-        }
-
+        crate::w32_ok!(ntapi::ntexapi::NtSetTimerResolution(value, 1, &mut self.cur))?;
         Ok(())
     }
 
