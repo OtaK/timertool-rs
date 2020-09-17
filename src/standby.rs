@@ -74,26 +74,21 @@ impl StandbyListCleaner {
         self
     }
 
-    unsafe fn upgrade_security_token(&self) -> std::io::Result<()> {
+    fn upgrade_security_token(&self) -> std::io::Result<()> {
         debug!("Beginning to upgrade security token...");
-        let process_hwnd = GetCurrentProcess();
+        let process_hwnd = unsafe { GetCurrentProcess() };
         let mut token_hwnd = winapi::shared::ntdef::NULL;
-        let result = OpenProcessToken(
+        crate::w32_ok!(BOOL OpenProcessToken(
             process_hwnd,
             TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES,
             &mut token_hwnd,
-        );
-        if result == winapi::shared::minwindef::FALSE {
-            return Err(std::io::Error::last_os_error());
-        }
+        ))?;
 
         let mut luid = winapi::shared::ntdef::LUID::default();
-        let lp_name =
-            std::ffi::CStr::from_bytes_with_nul_unchecked(b"SeProfileSingleProcessPrivilege\0");
-        let result = LookupPrivilegeValueA(0 as _, lp_name.as_ptr() as _, &mut luid as _);
-        if result == winapi::shared::minwindef::FALSE {
-            return Err(std::io::Error::last_os_error());
-        }
+        let lp_name = unsafe {
+            std::ffi::CStr::from_bytes_with_nul_unchecked(b"SeProfileSingleProcessPrivilege\0")
+        };
+        crate::w32_ok!(LookupPrivilegeValueA(0 as _, lp_name.as_ptr() as _, &mut luid as _))?;
 
         debug!(
             "LookupPrivilegeValueA returned LUID Low = {:x} / High = {:x}",
@@ -107,47 +102,33 @@ impl StandbyListCleaner {
         new_privileges.PrivilegeCount = 1;
         new_privileges.Privileges[0].Luid = luid;
         new_privileges.Privileges[0].Attributes = 0;
-        let result = AdjustTokenPrivileges(
+        crate::w32_ok!(BOOL AdjustTokenPrivileges(
             token_hwnd,
             0,
             &mut new_privileges as _,
             std::mem::size_of_val(&new_privileges) as _,
             &mut old_privileges as _,
             &mut dw_buffer_length as _,
-        );
-
-        if result == winapi::shared::minwindef::FALSE {
-            return Err(std::io::Error::last_os_error());
-        }
+        ))?;
 
         debug!("Assigned new privileges successfully");
 
         old_privileges.PrivilegeCount = 1;
         old_privileges.Privileges[0].Luid = luid;
         old_privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-        let result = AdjustTokenPrivileges(
+        crate::w32_ok!(BOOL AdjustTokenPrivileges(
             token_hwnd,
             0,
             &mut old_privileges,
             dw_buffer_length,
             winapi::shared::ntdef::NULL as _,
             0 as _,
-        );
-
-        if result == winapi::shared::minwindef::FALSE {
-            return Err(std::io::Error::last_os_error());
-        }
+        ))?;
 
         debug!("Assigned old privileges successfully");
 
-        if CloseHandle(token_hwnd) == winapi::shared::minwindef::FALSE {
-            return Err(std::io::Error::last_os_error());
-        }
-
-        if CloseHandle(process_hwnd) == winapi::shared::minwindef::FALSE {
-            return Err(std::io::Error::last_os_error());
-        }
-
+        crate::w32_ok!(BOOL CloseHandle(token_hwnd))?;
+        crate::w32_ok!(BOOL CloseHandle(process_hwnd))?;
         debug!("Closed process & token handles successfully");
 
         Ok(())
@@ -156,7 +137,7 @@ impl StandbyListCleaner {
     /// Starts the monitoring loop.
     /// Note that this is a blocking function that will not exit unless there's an error.
     pub fn monitor_and_clean(&self) -> std::io::Result<()> {
-        unsafe { self.upgrade_security_token()? };
+        self.upgrade_security_token()?;
 
         let mut command = ntapi::ntexapi::MemoryPurgeStandbyList;
         let cmd_len = std::mem::size_of_val(&command) as u32;
@@ -164,9 +145,7 @@ impl StandbyListCleaner {
         let mut ret_len = 0u32;
 
         let mut system_info = SYSTEM_INFO::default();
-        unsafe {
-            GetSystemInfo(&mut system_info as _);
-        }
+        unsafe { GetSystemInfo(&mut system_info as _) };
         debug!("System page size is {}", system_info.dwPageSize);
 
         let page_size = system_info.dwPageSize as usize;
@@ -175,27 +154,22 @@ impl StandbyListCleaner {
 
         loop {
             debug!("Calling NtQuerySystemInformation...");
-            let result = unsafe {
+            crate::w32_ok!(DEBUG
                 NtQuerySystemInformation(
                     SystemMemoryListInformation,
                     &mut system_information as *mut SYSTEM_MEMORY_LIST_INFORMATION as _,
                     std::mem::size_of::<SYSTEM_MEMORY_LIST_INFORMATION>() as _,
                     &mut ret_len as _,
+                ),
+                |result| debug!(
+                    "NtQuerySystemInformation(\n{}, \n{:?}, \n{}, \n{}\n) -> {}",
+                    SystemMemoryListInformation,
+                    SystemMemoryListInformationWrapper(system_information),
+                    std::mem::size_of::<SYSTEM_MEMORY_LIST_INFORMATION>(),
+                    ret_len,
+                    result
                 )
-            };
-
-            debug!(
-                "NtQuerySystemInformation(\n{}, \n{:?}, \n{}, \n{}\n) -> {}",
-                SystemMemoryListInformation,
-                SystemMemoryListInformationWrapper(system_information),
-                std::mem::size_of::<SYSTEM_MEMORY_LIST_INFORMATION>(),
-                ret_len,
-                result
-            );
-
-            if result != winapi::shared::ntstatus::STATUS_SUCCESS {
-                return Err(std::io::Error::last_os_error());
-            }
+            )?;
 
             let list_mem = system_information.PageCountByPriority.iter().sum::<usize>() * page_size;
             let free_mem = system_information.ZeroPageCount * page_size
@@ -206,22 +180,19 @@ impl StandbyListCleaner {
 
             if free_mem < self.freemem_threshold && list_mem > self.standbylist_threshold {
                 info!("Conditions met, now freeing standby list");
-                let result = unsafe {
-                    NtSetSystemInformation(SystemMemoryListInformation, cmd_ptr as _, cmd_len)
-                };
+                crate::w32_ok!(DEBUG
+                    NtSetSystemInformation(SystemMemoryListInformation, cmd_ptr as _, cmd_len),
+                    |result| {
+                        debug!(
+                            "NtSetSystemInformation({}, {:?}, {}) -> {}",
+                            SystemMemoryListInformation, cmd_ptr, cmd_len, result
+                        );
 
-                debug!(
-                    "NtSetSystemInformation({}, {:?}, {}) -> {}",
-                    SystemMemoryListInformation, cmd_ptr, cmd_len, result
-                );
-
-                if result == winapi::shared::ntstatus::STATUS_PRIVILEGE_NOT_HELD {
-                    debug!("Lacking admin token to do such an action");
-                }
-
-                if result != winapi::shared::ntstatus::STATUS_SUCCESS {
-                    return Err(std::io::Error::last_os_error());
-                }
+                        if result == winapi::shared::ntstatus::STATUS_PRIVILEGE_NOT_HELD {
+                            debug!("Lacking admin token to do such an action");
+                        }
+                    }
+                )?;
 
                 debug!("Standby list cleaned up");
             }
