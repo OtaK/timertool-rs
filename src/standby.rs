@@ -154,6 +154,8 @@ impl StandbyListCleaner {
 
         loop {
             debug!("Calling NtQuerySystemInformation...");
+            // Calling NtQuerySystemInformation with the undocumented SystemMemoryListInformation parameter allows
+            // to retrieve the stats of cached/freed/zeroed pages.
             crate::w32_ok!(DEBUG
                 NtQuerySystemInformation(
                     SystemMemoryListInformation,
@@ -171,7 +173,11 @@ impl StandbyListCleaner {
                 )
             )?;
 
+            // Undocumented: StandbyList size is calculated by summing all the page count per priority
+            // (and multiplying by the page size -usually 4KB- to get the value in bytes)
             let list_mem = system_information.PageCountByPriority.iter().sum::<usize>() * page_size;
+            // Undocumented: Free memory is the sum of zeroed AND free pages
+            // Free memory here is actual free, zeroed, non-repurposed physical memory
             let free_mem = system_information.ZeroPageCount * page_size
                 + system_information.FreePageCount * page_size;
 
@@ -180,6 +186,11 @@ impl StandbyListCleaner {
 
             if free_mem < self.freemem_threshold && list_mem > self.standbylist_threshold {
                 info!("Conditions met, now freeing standby list");
+
+                // Calling NtSetSystemInformation with the undocumented MemoryPurgeStandbyList command triggers
+                // purging the StandbyList, allowing to reclaim cached physical memory as free.
+                // This command is usually blocking for a few seconds since the kernel call blocks until
+                // all of the standby list is freed
                 crate::w32_ok!(DEBUG
                     NtSetSystemInformation(SystemMemoryListInformation, cmd_ptr as _, cmd_len),
                     |result| {
@@ -199,6 +210,10 @@ impl StandbyListCleaner {
 
             debug!("Sleeping {} seconds", self.poll_freq.as_secs());
             system_information = unsafe { std::mem::zeroed() };
+
+            // TODO: Switch to CreateMemoryResourceNotification?
+            // This could completely eliminate the need to periodically poll and might be way way more efficient in the long run
+            // cf. https://forums.guru3d.com/threads/fix-game-stutter-on-win-10-1703-1809.420251/page-12#post-5590984
             std::thread::sleep(self.poll_freq);
         }
     }
