@@ -43,6 +43,8 @@ pub struct StandbyListCleaner {
     standbylist_threshold: usize,
     freemem_threshold: usize,
     poll_freq: std::time::Duration,
+    #[cfg(feature = "cmrn")]
+    memory_hwnd: winapi::shared::ntdef::HANDLE,
 }
 
 impl Default for StandbyListCleaner {
@@ -51,6 +53,8 @@ impl Default for StandbyListCleaner {
             standbylist_threshold: 1024,
             freemem_threshold: 1024,
             poll_freq: std::time::Duration::from_secs(10),
+            #[cfg(feature = "cmrn")]
+            memory_hwnd: winapi::shared::ntdef::NULL,
         }
     }
 }
@@ -72,6 +76,24 @@ impl StandbyListCleaner {
     pub fn poll_interval(mut self, interval: u64) -> Self {
         self.poll_freq = std::time::Duration::from_secs(interval);
         self
+    }
+
+    #[cfg(feature = "cmrn")]
+    fn setup_cmrn(&mut self) -> std::io::Result<()> {
+        let mm_reg = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE).open_subkey_with_flags(
+            "System\\CurrentControlSet\\Control\\SessionManager\\MemoryManagement",
+            winreg::enums::KEY_WRITE
+        )?;
+
+        mm_reg.set_value("LowMemoryThreshold", &(self.freemem_threshold as u32))?;
+
+        self.memory_hwnd = unsafe {
+            winapi::um::memoryapi::CreateMemoryResourceNotification(
+                winapi::um::memoryapi::LowMemoryResourceNotification
+            )
+        };
+
+        Ok(())
     }
 
     fn upgrade_security_token(&self) -> std::io::Result<()> {
@@ -136,8 +158,10 @@ impl StandbyListCleaner {
 
     /// Starts the monitoring loop.
     /// Note that this is a blocking function that will not exit unless there's an error.
-    pub fn monitor_and_clean(&self) -> std::io::Result<()> {
+    pub fn monitor_and_clean(&mut self) -> std::io::Result<()> {
         self.upgrade_security_token()?;
+        #[cfg(feature = "cmrn")]
+        self.setup_cmrn()?;
 
         let mut command = ntapi::ntexapi::MemoryPurgeStandbyList;
         let cmd_len = std::mem::size_of_val(&command) as u32;
@@ -209,12 +233,33 @@ impl StandbyListCleaner {
             }
 
             debug!("Sleeping {} seconds", self.poll_freq.as_secs());
-            system_information = unsafe { std::mem::zeroed() };
 
             // TODO: Switch to CreateMemoryResourceNotification?
             // This could completely eliminate the need to periodically poll and might be way way more efficient in the long run
             // cf. https://forums.guru3d.com/threads/fix-game-stutter-on-win-10-1703-1809.420251/page-12#post-5590984
-            std::thread::sleep(self.poll_freq);
+            self.wait_next_iter()?;
+        }
+    }
+
+    #[cfg(not(feature = "cmrn"))]
+    fn wait_next_iter(&self) -> std::io::Result<()> {
+        std::thread::sleep(self.poll_freq);
+        Ok(())
+    }
+
+    #[cfg(feature = "cmrn")]
+    fn wait_next_iter(&self) -> std::io::Result<()> {
+        use winapi::um::synchapi::WaitForSingleObject;
+        use winapi::um::winbase::{
+            WAIT_ABANDONED,
+            WAIT_FAILED,
+            WAIT_OBJECT_0,
+        };
+        let result = unsafe { WaitForSingleObject(self.memory_hwnd, winapi::um::winbase::INFINITE) };
+        match result {
+            WAIT_FAILED => Err(std::io::Error::last_os_error()),
+            WAIT_OBJECT_0 | WAIT_ABANDONED => Ok(()),
+            _ => unreachable!(),
         }
     }
 }

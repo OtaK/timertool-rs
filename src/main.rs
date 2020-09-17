@@ -101,7 +101,7 @@ fn main(mut args: Opts) -> std::io::Result<()> {
             return Ok(());
         }
 
-        let cleaner = standby::StandbyListCleaner::default()
+        let mut cleaner = standby::StandbyListCleaner::default()
             .standby_list_size_threshold(args.clear_standby_cached_mem)
             .free_memory_size_threshold(args.clear_standby_free_mem)
             .poll_interval(args.clean_standby_list_poll_freq);
