@@ -88,7 +88,7 @@ impl StandbyListCleaner {
         let lp_name = unsafe {
             std::ffi::CStr::from_bytes_with_nul_unchecked(b"SeProfileSingleProcessPrivilege\0")
         };
-        crate::w32_ok!(LookupPrivilegeValueA(0 as _, lp_name.as_ptr() as _, &mut luid as _))?;
+        crate::w32_ok!(BOOL LookupPrivilegeValueA(0 as _, lp_name.as_ptr() as _, &mut luid as _))?;
 
         debug!(
             "LookupPrivilegeValueA returned LUID Low = {:x} / High = {:x}",
