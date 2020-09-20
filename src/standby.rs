@@ -38,13 +38,15 @@ impl std::fmt::Debug for SystemMemoryListInformationWrapper {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct StandbyListCleaner {
     standbylist_threshold: usize,
     freemem_threshold: usize,
     poll_freq: std::time::Duration,
     #[cfg(feature = "cmrn")]
     memory_hwnd: winapi::shared::ntdef::HANDLE,
+    #[cfg(feature = "cmrn")]
+    last_memory_wait: Option<std::time::Instant>,
 }
 
 impl Default for StandbyListCleaner {
@@ -55,7 +57,16 @@ impl Default for StandbyListCleaner {
             poll_freq: std::time::Duration::from_secs(10),
             #[cfg(feature = "cmrn")]
             memory_hwnd: winapi::shared::ntdef::NULL,
+            #[cfg(feature = "cmrn")]
+            last_memory_wait: None,
         }
+    }
+}
+
+#[cfg(feature = "cmrn")]
+impl Drop for StandbyListCleaner {
+    fn drop(&mut self) {
+        let _ = self.cleanup_cmrn();
     }
 }
 
@@ -81,7 +92,7 @@ impl StandbyListCleaner {
     #[cfg(feature = "cmrn")]
     fn setup_cmrn(&mut self) -> std::io::Result<()> {
         let mm_reg = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE).open_subkey_with_flags(
-            "System\\CurrentControlSet\\Control\\SessionManager\\MemoryManagement",
+            "System\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
             winreg::enums::KEY_WRITE
         )?;
 
@@ -93,6 +104,20 @@ impl StandbyListCleaner {
             )
         };
 
+        Ok(())
+    }
+
+    #[cfg(feature = "cmrn")]
+    fn cleanup_cmrn(&mut self) -> std::io::Result<()> {
+        debug!("Cleaning up memory handle");
+        unsafe { CloseHandle(self.memory_hwnd) };
+
+        debug!("Cleaning up LowMemoryThreshold registry key...");
+        let mm_reg = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE).open_subkey_with_flags(
+            "System\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
+            winreg::enums::KEY_WRITE
+        )?;
+        mm_reg.delete_value("LowMemoryThreshold")?;
         Ok(())
     }
 
@@ -232,7 +257,11 @@ impl StandbyListCleaner {
                 debug!("Standby list cleaned up");
             }
 
-            debug!("Sleeping {} seconds", self.poll_freq.as_secs());
+            if cfg!(feature = "cmrn") {
+                debug!("Waiting on memory notification now...");
+            } else {
+                debug!("Sleeping {} seconds", self.poll_freq.as_secs());
+            }
 
             // TODO: Switch to CreateMemoryResourceNotification?
             // This could completely eliminate the need to periodically poll and might be way way more efficient in the long run
@@ -242,19 +271,28 @@ impl StandbyListCleaner {
     }
 
     #[cfg(not(feature = "cmrn"))]
-    fn wait_next_iter(&self) -> std::io::Result<()> {
+    fn wait_next_iter(&mut self) -> std::io::Result<()> {
         std::thread::sleep(self.poll_freq);
         Ok(())
     }
 
     #[cfg(feature = "cmrn")]
-    fn wait_next_iter(&self) -> std::io::Result<()> {
+    fn wait_next_iter(&mut self) -> std::io::Result<()> {
+        if let Some(elapsed) = self.last_memory_wait.as_ref().map(std::time::Instant::elapsed) {
+            if elapsed < self.poll_freq {
+                let sleep_dur = self.poll_freq - elapsed;
+                debug!("Anti Kernel-DOS triggered, sleeping {}s", sleep_dur.as_secs());
+                std::thread::sleep(sleep_dur);
+            }
+        }
+
         use winapi::um::synchapi::WaitForSingleObject;
         use winapi::um::winbase::{
             WAIT_ABANDONED,
             WAIT_FAILED,
             WAIT_OBJECT_0,
         };
+        self.last_memory_wait = Some(std::time::Instant::now());
         let result = unsafe { WaitForSingleObject(self.memory_hwnd, winapi::um::winbase::INFINITE) };
         match result {
             WAIT_FAILED => Err(std::io::Error::last_os_error()),

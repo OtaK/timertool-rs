@@ -10,6 +10,7 @@ LegalCopyright = "Copyright Mathieu Amiot © 2020"
 
 [features]
 cmrn = ["winapi/memoryapi", "winapi/synchapi"]
+loggity-log = []
 default = []
 
 [dependencies]
