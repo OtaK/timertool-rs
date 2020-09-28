@@ -9,7 +9,6 @@ OriginalFileName = "TimerSet.exe"
 LegalCopyright = "Copyright Mathieu Amiot © 2020"
 
 [features]
-cmrn = ["winapi/memoryapi", "winapi/synchapi"]
 loggity-log = []
 default = []
 
@@ -32,7 +31,7 @@ features = ["user"]
 [dependencies.winapi]
 version = "0.3"
 default-features = false
-features = ["ntdef", "sysinfoapi", "handleapi", "processthreadsapi", "winnt", "securitybaseapi"]
+features = ["ntdef", "sysinfoapi", "handleapi", "processthreadsapi", "memoryapi", "synchapi", "winnt", "securitybaseapi"]
 
 [build-dependencies]
 winres = "0.1"

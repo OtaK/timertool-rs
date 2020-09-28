@@ -91,11 +91,12 @@ mod test {
     #[test]
     fn should_format_args_correctly() {
         let test_args = vec![
-            "--arg1".to_string(),
+            "timerset.exe".to_string(),
+            "--arg1".into(),
             "--arg2".into(),
             "--arg3 withvalue".into(),
         ];
 
-        assert_eq!(super::args_to_string(test_args), "--arg1 --arg2 --arg3 withvalue");
+        assert_eq!(super::args_to_string(test_args), "timerset.exe --arg1 --arg2 --arg3 withvalue");
     }
 }
