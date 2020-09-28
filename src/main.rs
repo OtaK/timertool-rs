@@ -89,6 +89,8 @@ fn main(mut args: Opts) -> std::io::Result<()> {
                 // Revert install steps
                 install::uninstall()?;
             }
+
+            return Ok(());
         }
 
         timer_info.apply_timer(timer_value)?;
