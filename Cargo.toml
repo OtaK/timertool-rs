@@ -31,7 +31,11 @@ features = ["user"]
 [dependencies.winapi]
 version = "0.3"
 default-features = false
-features = ["ntdef", "sysinfoapi", "handleapi", "processthreadsapi", "memoryapi", "synchapi", "winnt", "securitybaseapi"]
+features = [
+    "ntdef", "sysinfoapi", "handleapi", "processthreadsapi", "memoryapi",
+    "synchapi", "winnt", "objbase", "combaseapi", "taskschd", "securitybaseapi",
+    "wtypesbase", "rpcdce", "wtypes", "oaidl", "oleauto",
+]
 
 [build-dependencies]
 winres = "0.1"
@@ -39,3 +43,4 @@ winres = "0.1"
 [profile.release]
 lto = true
 codegen-units = 1
+panic = "abort"

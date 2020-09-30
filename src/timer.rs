@@ -22,7 +22,9 @@ impl TimerResolutionInfo {
         let mut cur = 0u32;
         // NtQueryTimerResolution is an old, undocumented internal NT Kernel API that allows to retrieve
         // the kernel's timer resolutions. It will give out minimum and maximum resolutions, and the current one.
-        crate::w32_ok!(ntapi::ntexapi::NtQueryTimerResolution(&mut min, &mut max, &mut cur))?;
+        crate::w32_ok!(ntapi::ntexapi::NtQueryTimerResolution(
+            &mut min, &mut max, &mut cur
+        ))?;
         Ok(Self { min, max, cur })
     }
 
@@ -36,7 +38,11 @@ impl TimerResolutionInfo {
         // Also note that this DOES have an effect on latency and throughput, meaning that the myth of a tickless NT Kernel since Windows 8
         // is essentially a lie, for the simple fact that many legacy moving parts of the kernel are still relying on the NT Timer.
         // WDDM is a good example of this for instance, as using a low timer will reduce DPC/ISR latencies for most -if not all- drivers.
-        crate::w32_ok!(ntapi::ntexapi::NtSetTimerResolution(value, 1, &mut self.cur))?;
+        crate::w32_ok!(ntapi::ntexapi::NtSetTimerResolution(
+            value,
+            1,
+            &mut self.cur
+        ))?;
         Ok(())
     }
 
