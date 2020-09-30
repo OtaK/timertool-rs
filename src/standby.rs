@@ -7,15 +7,10 @@ use winapi::um::{
     handleapi::CloseHandle,
     processthreadsapi::{GetCurrentProcess, OpenProcessToken},
     securitybaseapi::AdjustTokenPrivileges,
-    sysinfoapi::{GetSystemInfo, SYSTEM_INFO},
-    winbase::{
-        LookupPrivilegeValueA,
-        WAIT_ABANDONED,
-        WAIT_FAILED,
-        WAIT_OBJECT_0,
-    },
-    winnt::{SE_PRIVILEGE_ENABLED, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY},
     synchapi::WaitForSingleObject,
+    sysinfoapi::{GetSystemInfo, SYSTEM_INFO},
+    winbase::{LookupPrivilegeValueA, WAIT_ABANDONED, WAIT_FAILED, WAIT_OBJECT_0},
+    winnt::{SE_PRIVILEGE_ENABLED, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY},
 };
 
 use log::{debug, info};
@@ -91,10 +86,11 @@ impl StandbyListCleaner {
     }
 
     fn setup_cmrn(&mut self) -> std::io::Result<()> {
-        let mm_reg = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE).open_subkey_with_flags(
-            "System\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
-            winreg::enums::KEY_WRITE
-        )?;
+        let mm_reg = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
+            .open_subkey_with_flags(
+                "System\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
+                winreg::enums::KEY_WRITE,
+            )?;
 
         mm_reg.set_value("LowMemoryThreshold", &(self.freemem_threshold as u32))?;
 
@@ -102,7 +98,7 @@ impl StandbyListCleaner {
         // will be reached. The function `wait_on_cmrn` takes care of that with a blocking call on `WaitForSingleObject`
         self.memory_hwnd = unsafe {
             winapi::um::memoryapi::CreateMemoryResourceNotification(
-                winapi::um::memoryapi::LowMemoryResourceNotification
+                winapi::um::memoryapi::LowMemoryResourceNotification,
             )
         };
 
@@ -114,10 +110,11 @@ impl StandbyListCleaner {
         unsafe { CloseHandle(self.memory_hwnd) };
 
         debug!("Cleaning up LowMemoryThreshold registry key...");
-        let mm_reg = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE).open_subkey_with_flags(
-            "System\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
-            winreg::enums::KEY_WRITE
-        )?;
+        let mm_reg = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
+            .open_subkey_with_flags(
+                "System\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
+                winreg::enums::KEY_WRITE,
+            )?;
         mm_reg.delete_value("LowMemoryThreshold")?;
         Ok(())
     }
@@ -263,16 +260,24 @@ impl StandbyListCleaner {
     }
 
     fn wait_on_cmrn(&mut self) -> std::io::Result<()> {
-        if let Some(elapsed) = self.last_memory_wait.as_ref().map(std::time::Instant::elapsed) {
+        if let Some(elapsed) = self
+            .last_memory_wait
+            .as_ref()
+            .map(std::time::Instant::elapsed)
+        {
             if elapsed < self.poll_freq {
                 let sleep_dur = self.poll_freq - elapsed;
-                debug!("Anti Kernel-DOS triggered, sleeping {}s", sleep_dur.as_secs());
+                debug!(
+                    "Anti Kernel-DOS triggered, sleeping {}s",
+                    sleep_dur.as_secs()
+                );
                 std::thread::sleep(sleep_dur);
             }
         }
 
         self.last_memory_wait = Some(std::time::Instant::now());
-        let result = unsafe { WaitForSingleObject(self.memory_hwnd, winapi::um::winbase::INFINITE) };
+        let result =
+            unsafe { WaitForSingleObject(self.memory_hwnd, winapi::um::winbase::INFINITE) };
         match result {
             WAIT_FAILED => Err(std::io::Error::last_os_error()),
             WAIT_OBJECT_0 | WAIT_ABANDONED => Ok(()),

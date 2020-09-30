@@ -1,0 +1,2 @@
+[build]
+rustflags = ["-C", "control-flow-guard"]

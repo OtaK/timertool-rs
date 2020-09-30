@@ -1,12 +1,16 @@
-#![cfg_attr(all(not(feature = "loggity-log"), not(debug_assertions)), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(not(feature = "loggity-log"), not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
 
 use log::{error, info};
 
 mod install;
+mod macros;
 mod standby;
+mod task_scheduler;
 mod timer;
 mod win_elevated;
-mod macros;
 
 #[derive(Debug, structopt::StructOpt)]
 #[structopt(author = "Mathieu Amiot <amiot.mathieu@gmail.com>")]
