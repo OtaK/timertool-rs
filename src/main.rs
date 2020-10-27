@@ -5,12 +5,13 @@
 
 use log::{error, info};
 
+mod utils;
+
 mod install;
 mod macros;
 mod standby;
 mod task_scheduler;
 mod timer;
-mod win_elevated;
 
 #[derive(Debug, structopt::StructOpt)]
 #[structopt(author = "Mathieu Amiot <amiot.mathieu@gmail.com>")]
@@ -85,7 +86,7 @@ fn main(mut args: Opts) -> std::io::Result<()> {
         info!("Chosen timer value: {}μs", timer_value);
 
         if args.install || args.uninstall {
-            if !win_elevated::is_app_elevated() {
+            if !utils::win_elevated::is_app_elevated() {
                 error!("You need to start this app with administrator permissions to install the program on your system.");
             } else if args.install {
                 install::install(&args)?;
@@ -102,7 +103,7 @@ fn main(mut args: Opts) -> std::io::Result<()> {
     }
 
     if args.clean_standby_list {
-        if !win_elevated::is_app_elevated() {
+        if !utils::win_elevated::is_app_elevated() {
             error!("You need to start this app with administrator permissions to use the standby list cleaning feature.");
             return Ok(());
         }

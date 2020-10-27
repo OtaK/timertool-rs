@@ -34,7 +34,7 @@ default-features = false
 features = [
     "ntdef", "sysinfoapi", "handleapi", "processthreadsapi", "memoryapi",
     "synchapi", "winnt", "objbase", "combaseapi", "taskschd", "securitybaseapi",
-    "wtypesbase", "rpcdce", "wtypes", "oaidl", "oleauto",
+    "wtypesbase", "rpcdce", "wtypes", "oaidl", "oleauto", "unknwnbase",
 ]
 
 [build-dependencies]
