@@ -16,7 +16,7 @@ default = []
 log = "0.4"
 pretty_env_logger = "0.4"
 paw = "1.0"
-winreg = "0.7"
+winreg = "0.8"
 
 [dependencies.structopt]
 version = "0.3"
