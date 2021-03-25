@@ -12,12 +12,17 @@ mod macros;
 mod standby;
 mod task_scheduler;
 mod timer;
+mod logger;
 
 #[derive(Debug, structopt::StructOpt)]
 #[structopt(author = "Mathieu Amiot <amiot.mathieu@gmail.com>")]
 /// TimerSet allows you to change your NT Kernel system timer
 /// Also allows you to monitor Windows Standby List and clean it up when needed
 pub struct Opts {
+    #[structopt(short, long)]
+    /// Shows the actions taken but do not modify anything on the system; Also known as a dry run.
+    pretend: bool,
+
     #[structopt(short, long)]
     /// Installs TimerSet to your system and runs it on startup
     install: bool,
@@ -68,7 +73,13 @@ fn main() {
 #[cfg(windows)]
 #[paw::main]
 fn main(mut args: Opts) -> std::io::Result<()> {
-    pretty_env_logger::init();
+    let mut logger = logger::Logger::new();
+    logger.init();
+
+    if args.pretend {
+        info!("--pretend enabled, no action will be taken on the system")
+    }
+
     {
         let mut timer_info = timer::TimerResolutionInfo::fetch()?;
         info!("{}", timer_info);
@@ -92,13 +103,15 @@ fn main(mut args: Opts) -> std::io::Result<()> {
                 install::install(&args)?;
             } else if args.uninstall {
                 // Revert install steps
-                install::uninstall()?;
+                install::uninstall(&args)?;
             }
 
             return Ok(());
         }
 
-        timer_info.apply_timer(timer_value)?;
+        if !args.pretend {
+            timer_info.apply_timer(timer_value)?;
+        }
         info!("New timer value set: {}μs", timer_info.cur);
     }
 
@@ -113,10 +126,16 @@ fn main(mut args: Opts) -> std::io::Result<()> {
             .free_memory_size_threshold(args.clear_standby_free_mem)
             .poll_interval(args.clean_standby_list_poll_freq);
 
+        if args.pretend {
+            return Ok(());
+        }
         drop(args);
         info!("Cleaned up resources and starting memory monitoring...");
         cleaner.monitor_and_clean()?;
     } else {
+        if args.pretend {
+            return Ok(());
+        }
         drop(args);
         info!("Cleaned up resources and parking till the end of time...");
         std::thread::park();
