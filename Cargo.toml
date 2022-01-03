@@ -1,8 +1,8 @@
 [package]
 name = "timerset"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Mathieu Amiot <amiot.mathieu@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [package.metadata.winres]
 OriginalFileName = "TimerSet.exe"
@@ -14,15 +14,12 @@ default = []
 
 [dependencies]
 log = "0.4"
-paw = "1.0"
-winreg = "0.8"
 fern = { version = "0.6", features = ["colored"] }
-chrono = "0.4"
-
-[dependencies.structopt]
-version = "0.3"
-default-features = false
-features = ["paw"]
+clap = { version = "3.0", features = ["derive"] }
+thiserror = "1.0"
+eyre = "0.6"
+time = { version = "0.3", features = ["formatting"] }
+winreg = "0.10"
 
 [dependencies.ntapi]
 version = "0.3"

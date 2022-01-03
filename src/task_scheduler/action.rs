@@ -44,12 +44,12 @@ impl Into<*mut IActionCollection> for ActionCollection {
 
 #[allow(dead_code)]
 impl ActionCollection {
-    pub fn clear(&self) -> std::io::Result<()> {
+    pub fn clear(&self) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).Clear())?;
         Ok(())
     }
 
-    pub fn count(&self) -> std::io::Result<usize> {
+    pub fn count(&self) -> crate::task_scheduler::TaskSchedulerResult<usize> {
         let mut count = 0;
         crate::w32_ok!((*self.0).get_Count(&mut count))?;
         Ok(count as usize)
@@ -68,7 +68,7 @@ impl ActionCollection {
         variant
     }
 
-    pub fn remove(&self, index: usize) -> std::io::Result<()> {
+    pub fn remove(&self, index: usize) -> crate::task_scheduler::TaskSchedulerResult<()> {
         let count = self.count()?;
         if index == 0 || index > count {
             return Err(std::io::ErrorKind::InvalidInput.into());
@@ -79,7 +79,7 @@ impl ActionCollection {
         Ok(())
     }
 
-    pub fn get(&self, index: usize) -> std::io::Result<Action> {
+    pub fn get(&self, index: usize) -> crate::task_scheduler::TaskSchedulerResult<Action> {
         let count = self.count()?;
         if index == 0 || index > count {
             return Err(std::io::ErrorKind::InvalidInput.into());
@@ -90,7 +90,10 @@ impl ActionCollection {
         Ok(action.into())
     }
 
-    pub fn create(&self, trigger_type: TaskActionType) -> std::io::Result<Action> {
+    pub fn create(
+        &self,
+        trigger_type: TaskActionType,
+    ) -> crate::task_scheduler::TaskSchedulerResult<Action> {
         let mut trigger: *mut IAction = std::ptr::null_mut();
         crate::w32_ok!((*self.0).Create(trigger_type as _, &mut trigger))?;
         Ok(trigger.into())
@@ -126,18 +129,18 @@ impl std::ops::DerefMut for Action {
 
 #[allow(dead_code)]
 impl Action {
-    pub fn id(&self) -> std::io::Result<String> {
+    pub fn id(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!(self.get_Id(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_id<S: AsRef<str>>(&self, id: S) -> std::io::Result<()> {
+    pub fn set_id<S: AsRef<str>>(&self, id: S) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!(self.put_Id(crate::wstr!(id.as_ref())))?;
         Ok(())
     }
 
-    pub fn get_type(&self) -> std::io::Result<TaskActionType> {
+    pub fn get_type(&self) -> crate::task_scheduler::TaskSchedulerResult<TaskActionType> {
         let mut action_type = 0u32;
         crate::w32_ok!(self.get_Type(&mut action_type))?;
         Ok(action_type.into())
@@ -147,7 +150,7 @@ impl Action {
 crate::generate_action_type!(TaskActionType::Exec, IExecAction, ExecAction);
 
 pub trait SubAction {
-    fn new(action: Action) -> std::io::Result<Self>
+    fn new(action: Action) -> crate::task_scheduler::TaskSchedulerResult<Self>
     where
         Self: Sized;
     fn uuid() -> GUID;
@@ -177,7 +180,7 @@ macro_rules! generate_action_type {
         }
 
         impl SubAction for $newt {
-            fn new(action: Action) -> std::io::Result<Self> {
+            fn new(action: Action) -> crate::task_scheduler::TaskSchedulerResult<Self> {
                 let mut ret_action: *mut $target = std::ptr::null_mut();
                 use winapi::Interface as _;
                 crate::w32_ok!(action
@@ -206,29 +209,35 @@ macro_rules! generate_action_type {
 
 #[allow(dead_code)]
 impl ExecAction {
-    pub fn path(&self) -> std::io::Result<String> {
+    pub fn path(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut delay_bstr: BSTR = std::ptr::null_mut();
         crate::w32_ok!(self.get_Path(&mut delay_bstr))?;
         super::bstr_to_string(delay_bstr)
     }
 
-    pub fn set_path<S: AsRef<str>>(&self, path: S) -> std::io::Result<()> {
+    pub fn set_path<S: AsRef<str>>(
+        &self,
+        path: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!(self.put_Path(crate::wstr!(path.as_ref())))?;
         Ok(())
     }
 
-    pub fn arguments(&self) -> std::io::Result<String> {
+    pub fn arguments(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut delay_bstr: BSTR = std::ptr::null_mut();
         crate::w32_ok!(self.get_Arguments(&mut delay_bstr))?;
         super::bstr_to_string(delay_bstr)
     }
 
-    pub fn set_arguments<S: AsRef<str>>(&self, arguments: S) -> std::io::Result<()> {
+    pub fn set_arguments<S: AsRef<str>>(
+        &self,
+        arguments: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!(self.put_Arguments(crate::wstr!(arguments.as_ref())))?;
         Ok(())
     }
 
-    pub fn working_directory(&self) -> std::io::Result<String> {
+    pub fn working_directory(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut delay_bstr: BSTR = std::ptr::null_mut();
         crate::w32_ok!(self.get_WorkingDirectory(&mut delay_bstr))?;
         super::bstr_to_string(delay_bstr)
@@ -237,7 +246,7 @@ impl ExecAction {
     pub fn set_working_directory<S: AsRef<str>>(
         &self,
         working_directory: S,
-    ) -> std::io::Result<()> {
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!(self.put_WorkingDirectory(crate::wstr!(working_directory.as_ref())))?;
         Ok(())
     }

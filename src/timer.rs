@@ -16,7 +16,7 @@ impl std::fmt::Display for TimerResolutionInfo {
 }
 
 impl TimerResolutionInfo {
-    pub fn fetch() -> std::io::Result<Self> {
+    pub fn fetch() -> crate::TimersetResult<Self> {
         let mut min = 0u32;
         let mut max = 0u32;
         let mut cur = 0u32;
@@ -28,7 +28,7 @@ impl TimerResolutionInfo {
         Ok(Self { min, max, cur })
     }
 
-    pub fn apply_timer(&mut self, value: u32) -> std::io::Result<()> {
+    pub fn apply_timer(&mut self, value: u32) -> crate::TimersetResult<()> {
         let value = self.clamp_timer_value(value);
         // NtSetTimerResolution is an old, undocumented internal NT Kernel API that is very often used by media applications
         // to raise the kernel's timer and allow lower latencies and higher (= closer to real-time) throughput

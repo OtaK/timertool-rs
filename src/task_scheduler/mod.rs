@@ -1,3 +1,8 @@
+#![allow(clippy::from_over_into)]
+
+mod error;
+pub use error::*;
+
 mod task_folder;
 pub use task_folder::*;
 
@@ -81,11 +86,13 @@ impl<T: Deref<Target = IDispatch>> std::ops::DerefMut for IUnknownWrapper<T> {
 }
 
 #[inline(always)]
-pub(crate) fn bstr_to_string(bstr: winapi::shared::wtypes::BSTR) -> std::io::Result<String> {
+pub(crate) fn bstr_to_string(
+    bstr: winapi::shared::wtypes::BSTR,
+) -> crate::task_scheduler::TaskSchedulerResult<String> {
     let raw_str = unsafe { std::slice::from_raw_parts(bstr, *bstr as _) };
     use std::os::windows::ffi::OsStringExt as _;
     let os_str = std::ffi::OsString::from_wide(raw_str);
-    os_str
+    Ok(os_str
         .into_string()
-        .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidData))
+        .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidData))?)
 }

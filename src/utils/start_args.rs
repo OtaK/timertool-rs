@@ -6,21 +6,23 @@ pub struct StartArgs {
 }
 
 impl StartArgs {
-    pub fn args_to_string(args: &Vec<String>) -> String {
+    pub fn args_to_string(args: &[String]) -> String {
         args.iter()
             .enumerate()
             .fold(String::new(), |mut s, (i, arg)| {
                 if i > 0 {
                     s.push(' ');
                 }
-                s.push_str(&arg);
+                s.push_str(arg);
                 s
             })
     }
 
     pub fn build_from_args(mut dest_path: std::path::PathBuf, args: &crate::Opts) -> Self {
-        let mut ret = Self::default();
-        ret.target = format!("{}", dest_path.display());
+        let mut ret = Self {
+            target: format!("{}", dest_path.display()),
+            ..Default::default()
+        };
         if dest_path.pop() {
             ret.start_location = dest_path.to_str().map(Into::into);
         }

@@ -68,13 +68,16 @@ impl Into<*mut ITaskSettings> for TaskSettings {
 
 #[allow(dead_code)]
 impl TaskSettings {
-    pub fn allow_demand_start(&self) -> std::io::Result<bool> {
+    pub fn allow_demand_start(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_AllowDemandStart(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_allow_demand_start(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_allow_demand_start(
+        &self,
+        allow: bool,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_AllowDemandStart(if allow {
             VARIANT_TRUE
         } else {
@@ -83,13 +86,16 @@ impl TaskSettings {
         Ok(())
     }
 
-    pub fn start_when_available(&self) -> std::io::Result<bool> {
+    pub fn start_when_available(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_StartWhenAvailable(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_start_when_available(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_start_when_available(
+        &self,
+        allow: bool,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_StartWhenAvailable(if allow {
             VARIANT_TRUE
         } else {
@@ -98,13 +104,16 @@ impl TaskSettings {
         Ok(())
     }
 
-    pub fn stop_if_going_into_batteries(&self) -> std::io::Result<bool> {
+    pub fn stop_if_going_into_batteries(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_StopIfGoingOnBatteries(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_stop_if_going_into_batteries(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_stop_if_going_into_batteries(
+        &self,
+        allow: bool,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_StopIfGoingOnBatteries(if allow {
             VARIANT_TRUE
         } else {
@@ -113,13 +122,18 @@ impl TaskSettings {
         Ok(())
     }
 
-    pub fn disallow_start_if_on_batteries(&self) -> std::io::Result<bool> {
+    pub fn disallow_start_if_on_batteries(
+        &self,
+    ) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_DisallowStartIfOnBatteries(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_disallow_start_if_on_batteries(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_disallow_start_if_on_batteries(
+        &self,
+        allow: bool,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_DisallowStartIfOnBatteries(if allow {
             VARIANT_TRUE
         } else {
@@ -128,13 +142,16 @@ impl TaskSettings {
         Ok(())
     }
 
-    pub fn allow_hard_terminate(&self) -> std::io::Result<bool> {
+    pub fn allow_hard_terminate(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_AllowHardTerminate(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_allow_hard_terminate(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_allow_hard_terminate(
+        &self,
+        allow: bool,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_AllowHardTerminate(if allow {
             VARIANT_TRUE
         } else {
@@ -143,13 +160,18 @@ impl TaskSettings {
         Ok(())
     }
 
-    pub fn run_only_if_network_available(&self) -> std::io::Result<bool> {
+    pub fn run_only_if_network_available(
+        &self,
+    ) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_RunOnlyIfNetworkAvailable(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_run_only_if_network_available(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_run_only_if_network_available(
+        &self,
+        allow: bool,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_RunOnlyIfNetworkAvailable(if allow {
             VARIANT_TRUE
         } else {
@@ -158,35 +180,38 @@ impl TaskSettings {
         Ok(())
     }
 
-    pub fn enabled(&self) -> std::io::Result<bool> {
+    pub fn enabled(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_Enabled(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_enabled(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_enabled(&self, allow: bool) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_Enabled(if allow { VARIANT_TRUE } else { VARIANT_FALSE }))?;
         Ok(())
     }
 
-    pub fn hidden(&self) -> std::io::Result<bool> {
+    pub fn hidden(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_Hidden(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_hidden(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_hidden(&self, allow: bool) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_Hidden(if allow { VARIANT_TRUE } else { VARIANT_FALSE }))?;
         Ok(())
     }
 
-    pub fn run_only_if_idle(&self) -> std::io::Result<bool> {
+    pub fn run_only_if_idle(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_RunOnlyIfIdle(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_run_only_if_idle(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_run_only_if_idle(
+        &self,
+        allow: bool,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_RunOnlyIfIdle(if allow {
             VARIANT_TRUE
         } else {
@@ -195,68 +220,85 @@ impl TaskSettings {
         Ok(())
     }
 
-    pub fn wake_to_run(&self) -> std::io::Result<bool> {
+    pub fn wake_to_run(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_WakeToRun(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_wake_to_run(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_wake_to_run(&self, allow: bool) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_WakeToRun(if allow { VARIANT_TRUE } else { VARIANT_FALSE }))?;
         Ok(())
     }
 
-    pub fn execution_time_limit(&self) -> std::io::Result<String> {
+    pub fn execution_time_limit(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_ExecutionTimeLimit(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_execution_time_limit<S: AsRef<str>>(&self, time_limit: S) -> std::io::Result<()> {
+    pub fn set_execution_time_limit<S: AsRef<str>>(
+        &self,
+        time_limit: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_ExecutionTimeLimit(crate::wstr!(time_limit.as_ref())))?;
         Ok(())
     }
 
-    pub fn restart_interval(&self) -> std::io::Result<String> {
+    pub fn restart_interval(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_RestartInterval(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_restart_interval<S: AsRef<str>>(&self, interval: S) -> std::io::Result<()> {
+    pub fn set_restart_interval<S: AsRef<str>>(
+        &self,
+        interval: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_RestartInterval(crate::wstr!(interval.as_ref())))?;
         Ok(())
     }
 
-    pub fn xml_text(&self) -> std::io::Result<String> {
+    pub fn xml_text(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_XmlText(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_xml_text<S: AsRef<str>>(&self, xml_text: S) -> std::io::Result<()> {
+    pub fn set_xml_text<S: AsRef<str>>(
+        &self,
+        xml_text: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_XmlText(crate::wstr!(xml_text.as_ref())))?;
         Ok(())
     }
 
-    pub fn multiple_instances(&self) -> std::io::Result<TaskInstancesPolicy> {
+    pub fn multiple_instances(
+        &self,
+    ) -> crate::task_scheduler::TaskSchedulerResult<TaskInstancesPolicy> {
         let mut ret: u32 = 0;
         crate::w32_ok!((*self.0).get_MultipleInstances(&mut ret))?;
         Ok(ret.into())
     }
 
-    pub fn set_multiple_instances(&self, policy: TaskInstancesPolicy) -> std::io::Result<()> {
+    pub fn set_multiple_instances(
+        &self,
+        policy: TaskInstancesPolicy,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_MultipleInstances(policy as u32))?;
         Ok(())
     }
 
-    pub fn compatibility(&self) -> std::io::Result<TaskCompatibility> {
+    pub fn compatibility(&self) -> crate::task_scheduler::TaskSchedulerResult<TaskCompatibility> {
         let mut ret: u32 = 0;
         crate::w32_ok!((*self.0).get_Compatibility(&mut ret))?;
         Ok(ret.into())
     }
 
-    pub fn set_compatibility(&self, compat: TaskCompatibility) -> std::io::Result<()> {
+    pub fn set_compatibility(
+        &self,
+        compat: TaskCompatibility,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_Compatibility(compat as u32))?;
         Ok(())
     }

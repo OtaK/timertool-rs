@@ -37,7 +37,7 @@ pub struct WindowsTaskScheduler {
 
 #[allow(dead_code)]
 impl WindowsTaskScheduler {
-    pub fn new() -> std::io::Result<Self> {
+    pub fn new() -> crate::task_scheduler::TaskSchedulerResult<Self> {
         let mut ret = Self::default();
         crate::w32_ok!(DEBUG CoInitializeEx(
             NULL,
@@ -96,23 +96,23 @@ impl WindowsTaskScheduler {
         Ok(ret)
     }
 
-    pub fn connect(&self) -> std::io::Result<()> {
+    pub fn connect(&self) -> crate::task_scheduler::TaskSchedulerResult<()> {
         if let Some(service) = &self.service {
             debug!("Service: {:?}", service.lpVtbl);
-            crate::w32_ok!(DEBUG service.Connect(
+            Ok(crate::w32_ok!(DEBUG service.Connect(
                 std::mem::zeroed(),
                 std::mem::zeroed(),
                 std::mem::zeroed(),
                 std::mem::zeroed(),
             ), |result| {
                 debug!("ITaskService::Connect() -> {:#X}", result);
-            })
+            })?)
         } else {
             Err(std::io::ErrorKind::NotConnected.into())
         }
     }
 
-    pub fn is_connected(&self) -> std::io::Result<bool> {
+    pub fn is_connected(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         if let Some(service) = &self.service {
             let mut ret: VARIANT_BOOL = VARIANT_FALSE;
             crate::w32_ok!(service.get_Connected(&mut ret))?;
@@ -122,7 +122,7 @@ impl WindowsTaskScheduler {
         }
     }
 
-    pub fn connected_domain(&self) -> std::io::Result<String> {
+    pub fn connected_domain(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         if let Some(service) = &self.service {
             let mut ret: BSTR = std::ptr::null_mut();
             crate::w32_ok!(service.get_ConnectedDomain(&mut ret))?;
@@ -132,7 +132,7 @@ impl WindowsTaskScheduler {
         }
     }
 
-    pub fn connected_user(&self) -> std::io::Result<String> {
+    pub fn connected_user(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         if let Some(service) = &self.service {
             let mut ret: BSTR = std::ptr::null_mut();
             crate::w32_ok!(service.get_ConnectedUser(&mut ret))?;
@@ -142,7 +142,7 @@ impl WindowsTaskScheduler {
         }
     }
 
-    pub fn target_server(&self) -> std::io::Result<String> {
+    pub fn target_server(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         if let Some(service) = &self.service {
             let mut ret: BSTR = std::ptr::null_mut();
             crate::w32_ok!(service.get_TargetServer(&mut ret))?;
@@ -152,7 +152,10 @@ impl WindowsTaskScheduler {
         }
     }
 
-    pub fn folder<T: AsRef<str>>(&self, folder: T) -> std::io::Result<TaskFolder> {
+    pub fn folder<T: AsRef<str>>(
+        &self,
+        folder: T,
+    ) -> crate::task_scheduler::TaskSchedulerResult<TaskFolder> {
         if let Some(service) = &self.service {
             let mut task_folder: *mut ITaskFolder = std::ptr::null_mut();
             let task_folder_name = crate::wstr!(folder.as_ref());
@@ -172,7 +175,7 @@ impl WindowsTaskScheduler {
         }
     }
 
-    pub fn new_task(&self) -> std::io::Result<TaskDefinition> {
+    pub fn new_task(&self) -> crate::task_scheduler::TaskSchedulerResult<TaskDefinition> {
         if let Some(service) = &self.service {
             let mut task_definition: *mut ITaskDefinition = std::ptr::null_mut();
             crate::w32_ok!(service.NewTask(0, &mut task_definition))?;
@@ -182,7 +185,7 @@ impl WindowsTaskScheduler {
         }
     }
 
-    pub fn highest_version(&self) -> std::io::Result<TaskCompatibility> {
+    pub fn highest_version(&self) -> crate::task_scheduler::TaskSchedulerResult<TaskCompatibility> {
         if let Some(service) = &self.service {
             let mut ret: u32 = 0;
             crate::w32_ok!(service.get_HighestVersion(&mut ret))?;

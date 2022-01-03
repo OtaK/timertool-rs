@@ -85,7 +85,7 @@ impl StandbyListCleaner {
         self
     }
 
-    fn setup_cmrn(&mut self) -> std::io::Result<()> {
+    fn setup_cmrn(&mut self) -> crate::TimersetResult<()> {
         let mm_reg = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
             .open_subkey_with_flags(
                 "System\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
@@ -105,7 +105,7 @@ impl StandbyListCleaner {
         Ok(())
     }
 
-    fn cleanup_cmrn(&mut self) -> std::io::Result<()> {
+    fn cleanup_cmrn(&mut self) -> crate::TimersetResult<()> {
         debug!("Cleaning up memory handle");
         unsafe { CloseHandle(self.memory_hwnd) };
 
@@ -119,7 +119,7 @@ impl StandbyListCleaner {
         Ok(())
     }
 
-    fn upgrade_security_token(&self) -> std::io::Result<()> {
+    fn upgrade_security_token(&self) -> crate::TimersetResult<()> {
         debug!("Beginning to upgrade security token...");
         let process_hwnd = unsafe { GetCurrentProcess() };
         let mut token_hwnd = winapi::shared::ntdef::NULL;
@@ -181,7 +181,7 @@ impl StandbyListCleaner {
 
     /// Starts the monitoring loop.
     /// Note that this is a blocking function that will not exit unless there's an error.
-    pub fn monitor_and_clean(&mut self) -> std::io::Result<()> {
+    pub fn monitor_and_clean(&mut self) -> crate::TimersetResult<()> {
         self.upgrade_security_token()?;
         self.setup_cmrn()?;
 
@@ -259,7 +259,7 @@ impl StandbyListCleaner {
         }
     }
 
-    fn wait_on_cmrn(&mut self) -> std::io::Result<()> {
+    fn wait_on_cmrn(&mut self) -> crate::TimersetResult<()> {
         if let Some(elapsed) = self
             .last_memory_wait
             .as_ref()
@@ -279,7 +279,7 @@ impl StandbyListCleaner {
         let result =
             unsafe { WaitForSingleObject(self.memory_hwnd, winapi::um::winbase::INFINITE) };
         match result {
-            WAIT_FAILED => Err(std::io::Error::last_os_error()),
+            WAIT_FAILED => Err(crate::TimersetError::windows_error()),
             WAIT_OBJECT_0 | WAIT_ABANDONED => Ok(()),
             _ => unreachable!(),
         }

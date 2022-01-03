@@ -63,12 +63,12 @@ impl Into<*mut ITriggerCollection> for TriggerCollection {
 
 #[allow(dead_code)]
 impl TriggerCollection {
-    pub fn clear(&self) -> std::io::Result<()> {
+    pub fn clear(&self) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).Clear())?;
         Ok(())
     }
 
-    pub fn count(&self) -> std::io::Result<usize> {
+    pub fn count(&self) -> crate::task_scheduler::TaskSchedulerResult<usize> {
         let mut count = 0;
         crate::w32_ok!((*self.0).get_Count(&mut count))?;
         Ok(count as usize)
@@ -87,7 +87,7 @@ impl TriggerCollection {
         variant
     }
 
-    pub fn remove(&self, index: usize) -> std::io::Result<()> {
+    pub fn remove(&self, index: usize) -> crate::task_scheduler::TaskSchedulerResult<()> {
         let count = self.count()?;
         if index == 0 || index > count {
             return Err(std::io::ErrorKind::InvalidInput.into());
@@ -98,7 +98,7 @@ impl TriggerCollection {
         Ok(())
     }
 
-    pub fn get(&self, index: usize) -> std::io::Result<Trigger> {
+    pub fn get(&self, index: usize) -> crate::task_scheduler::TaskSchedulerResult<Trigger> {
         let count = self.count()?;
         if index == 0 || index > count {
             return Err(std::io::ErrorKind::InvalidInput.into());
@@ -109,7 +109,10 @@ impl TriggerCollection {
         Ok(trigger.into())
     }
 
-    pub fn create(&self, trigger_type: TaskTriggerType) -> std::io::Result<Trigger> {
+    pub fn create(
+        &self,
+        trigger_type: TaskTriggerType,
+    ) -> crate::task_scheduler::TaskSchedulerResult<Trigger> {
         let mut trigger: *mut ITrigger = std::ptr::null_mut();
         crate::w32_ok!((*self.0).Create(trigger_type as _, &mut trigger))?;
         Ok(trigger.into())
@@ -145,57 +148,66 @@ impl std::ops::DerefMut for Trigger {
 
 #[allow(dead_code)]
 impl Trigger {
-    pub fn id(&self) -> std::io::Result<String> {
+    pub fn id(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_Id(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_id<S: AsRef<str>>(&self, id: S) -> std::io::Result<()> {
+    pub fn set_id<S: AsRef<str>>(&self, id: S) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_Id(crate::wstr!(id.as_ref())))?;
         Ok(())
     }
 
-    pub fn enabled(&self) -> std::io::Result<bool> {
+    pub fn enabled(&self) -> crate::task_scheduler::TaskSchedulerResult<bool> {
         let mut ret: VARIANT_BOOL = VARIANT_FALSE;
         crate::w32_ok!((*self.0).get_Enabled(&mut ret))?;
         Ok(ret == VARIANT_TRUE)
     }
 
-    pub fn set_enabled(&self, allow: bool) -> std::io::Result<()> {
+    pub fn set_enabled(&self, allow: bool) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_Enabled(if allow { VARIANT_TRUE } else { VARIANT_FALSE }))?;
         Ok(())
     }
 
-    pub fn execution_time_limit(&self) -> std::io::Result<String> {
+    pub fn execution_time_limit(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_ExecutionTimeLimit(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_execution_time_limit<S: AsRef<str>>(&self, time_limit: S) -> std::io::Result<()> {
+    pub fn set_execution_time_limit<S: AsRef<str>>(
+        &self,
+        time_limit: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_ExecutionTimeLimit(crate::wstr!(time_limit.as_ref())))?;
         Ok(())
     }
 
-    pub fn start_boundary(&self) -> std::io::Result<String> {
+    pub fn start_boundary(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_StartBoundary(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_start_boundary<S: AsRef<str>>(&self, boundary: S) -> std::io::Result<()> {
+    pub fn set_start_boundary<S: AsRef<str>>(
+        &self,
+        boundary: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_StartBoundary(crate::wstr!(boundary.as_ref())))?;
         Ok(())
     }
 
-    pub fn end_boundary(&self) -> std::io::Result<String> {
+    pub fn end_boundary(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_EndBoundary(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_end_boundary<S: AsRef<str>>(&self, boundary: S) -> std::io::Result<()> {
+    pub fn set_end_boundary<S: AsRef<str>>(
+        &self,
+        boundary: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_EndBoundary(crate::wstr!(boundary.as_ref())))?;
         Ok(())
     }
@@ -204,7 +216,7 @@ impl Trigger {
 crate::generate_trigger_type!(TaskTriggerType::Logon, ILogonTrigger, LogonTrigger);
 
 pub trait SubTrigger {
-    fn new(trigger: Trigger) -> std::io::Result<Self>
+    fn new(trigger: Trigger) -> crate::task_scheduler::TaskSchedulerResult<Self>
     where
         Self: Sized;
     fn uuid() -> GUID;
@@ -234,7 +246,7 @@ macro_rules! generate_trigger_type {
         }
 
         impl SubTrigger for $newt {
-            fn new(trigger: Trigger) -> std::io::Result<Self> {
+            fn new(trigger: Trigger) -> crate::task_scheduler::TaskSchedulerResult<Self> {
                 let mut ret_trigger: *mut $target = std::ptr::null_mut();
                 use winapi::Interface as _;
                 crate::w32_ok!(trigger.QueryInterface(
@@ -265,24 +277,30 @@ macro_rules! generate_trigger_type {
 
 #[allow(dead_code)]
 impl LogonTrigger {
-    pub fn delay(&self) -> std::io::Result<String> {
+    pub fn delay(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut delay_bstr: BSTR = std::ptr::null_mut();
         crate::w32_ok!(self.get_Delay(&mut delay_bstr))?;
         super::bstr_to_string(delay_bstr)
     }
 
-    pub fn set_delay<S: AsRef<str>>(&self, delay: S) -> std::io::Result<()> {
+    pub fn set_delay<S: AsRef<str>>(
+        &self,
+        delay: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!(self.put_Delay(crate::wstr!(delay.as_ref())))?;
         Ok(())
     }
 
-    pub fn user_id(&self) -> std::io::Result<String> {
+    pub fn user_id(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut user_id_bstr: BSTR = std::ptr::null_mut();
         crate::w32_ok!(self.get_UserId(&mut user_id_bstr))?;
         super::bstr_to_string(user_id_bstr)
     }
 
-    pub fn set_user_id<S: AsRef<str>>(&self, user_id: S) -> std::io::Result<()> {
+    pub fn set_user_id<S: AsRef<str>>(
+        &self,
+        user_id: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!(self.put_UserId(crate::wstr!(user_id.as_ref())))?;
         Ok(())
     }

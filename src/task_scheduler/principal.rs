@@ -65,68 +65,83 @@ impl Into<*mut IPrincipal> for Principal {
 
 #[allow(dead_code)]
 impl Principal {
-    pub fn id(&self) -> std::io::Result<String> {
+    pub fn id(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_Id(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_id<S: AsRef<str>>(&self, id: S) -> std::io::Result<()> {
+    pub fn set_id<S: AsRef<str>>(&self, id: S) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_Id(crate::wstr!(id.as_ref())))?;
         Ok(())
     }
 
-    pub fn display_name(&self) -> std::io::Result<String> {
+    pub fn display_name(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_DisplayName(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_display_name<S: AsRef<str>>(&self, display_name: S) -> std::io::Result<()> {
+    pub fn set_display_name<S: AsRef<str>>(
+        &self,
+        display_name: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_DisplayName(crate::wstr!(display_name.as_ref())))?;
         Ok(())
     }
 
-    pub fn user_id(&self) -> std::io::Result<String> {
+    pub fn user_id(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_UserId(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_user_id<S: AsRef<str>>(&self, user_id: S) -> std::io::Result<()> {
+    pub fn set_user_id<S: AsRef<str>>(
+        &self,
+        user_id: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_DisplayName(crate::wstr!(user_id.as_ref())))?;
         Ok(())
     }
 
-    pub fn group_id(&self) -> std::io::Result<String> {
+    pub fn group_id(&self) -> crate::task_scheduler::TaskSchedulerResult<String> {
         let mut ret: BSTR = std::ptr::null_mut();
         crate::w32_ok!((*self.0).get_GroupId(&mut ret))?;
         super::bstr_to_string(ret)
     }
 
-    pub fn set_group_id<S: AsRef<str>>(&self, group_id: S) -> std::io::Result<()> {
+    pub fn set_group_id<S: AsRef<str>>(
+        &self,
+        group_id: S,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_DisplayName(crate::wstr!(group_id.as_ref())))?;
         Ok(())
     }
 
-    pub fn logon_type(&self) -> std::io::Result<TaskLogonType> {
+    pub fn logon_type(&self) -> crate::task_scheduler::TaskSchedulerResult<TaskLogonType> {
         let mut ret: u32 = 0;
         crate::w32_ok!((*self.0).get_LogonType(&mut ret))?;
         Ok(ret.into())
     }
 
-    pub fn set_logon_type(&self, logon_type: TaskLogonType) -> std::io::Result<()> {
+    pub fn set_logon_type(
+        &self,
+        logon_type: TaskLogonType,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_LogonType(logon_type as u32))?;
         Ok(())
     }
 
-    pub fn runlevel(&self) -> std::io::Result<TaskRunlevel> {
+    pub fn runlevel(&self) -> crate::task_scheduler::TaskSchedulerResult<TaskRunlevel> {
         let mut ret: u32 = 0;
         crate::w32_ok!((*self.0).get_RunLevel(&mut ret))?;
         Ok(ret.into())
     }
 
-    pub fn set_runlevel(&self, runlevel: TaskRunlevel) -> std::io::Result<()> {
+    pub fn set_runlevel(
+        &self,
+        runlevel: TaskRunlevel,
+    ) -> crate::task_scheduler::TaskSchedulerResult<()> {
         crate::w32_ok!((*self.0).put_LogonType(runlevel as u32))?;
         Ok(())
     }

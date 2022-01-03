@@ -1,13 +1,9 @@
-use crate::task_scheduler::{ExecAction, WindowsTaskScheduler};
+use crate::task_scheduler::{ExecAction, RegisterTaskDefinitionArgs, WindowsTaskScheduler};
+use crate::TimersetResult;
 use crate::{
     task_scheduler::{
-        LogonTrigger,
-        TaskActionType,
-        TaskCompatibility,
-        TaskInstancesPolicy,
-        TaskTriggerType,
-        TaskLogonType,
-        TaskRunlevel
+        LogonTrigger, TaskActionType, TaskCompatibility, TaskInstancesPolicy, TaskLogonType,
+        TaskRunlevel, TaskTriggerType,
     },
     utils::StartArgs,
 };
@@ -19,12 +15,12 @@ const TASK_NAME: &str = "Start TimerSet [DEV]";
 #[cfg(not(debug))]
 const TASK_NAME: &str = "Start TimerSet";
 
-pub fn install(args: &crate::Opts) -> std::io::Result<()> {
+pub fn install(args: &crate::Opts) -> crate::TimersetResult<()> {
     // Copy exe to %ProgramFiles%\TimerSet\TimerSet.exe
     let current_exe_path = std::env::current_exe()?;
     debug!("Current exe path: {:?}", current_exe_path);
 
-    let mut dest_path: std::path::PathBuf = std::env::var("PROGRAMFILES").unwrap().into();
+    let mut dest_path: std::path::PathBuf = std::env::var("PROGRAMFILES")?.into();
     dest_path.push("TimerSet");
     info!("Installing TimerSet at: {:?}", dest_path);
     debug!("Creating app folder");
@@ -60,7 +56,8 @@ pub fn install(args: &crate::Opts) -> std::io::Result<()> {
 
         let task_reginfo = task.registration_info()?;
         task_reginfo.set_author("Mathieu \"OtaK_\" Amiot")?;
-        task_reginfo.set_description("Start TimerSet at logon of any user with admin permissions")?;
+        task_reginfo
+            .set_description("Start TimerSet at logon of any user with admin permissions")?;
 
         let task_settings = task.settings()?;
         task_settings.set_start_when_available(true)?;
@@ -87,15 +84,15 @@ pub fn install(args: &crate::Opts) -> std::io::Result<()> {
             exec_action.set_working_directory(start_location)?;
         }
 
-        let _ = folder.register_task_definition(
-            TASK_NAME,
-            task,
-            TASK_CREATE_OR_UPDATE as _,
-            None,
-            None,
-            TaskLogonType::InteractiveToken,
-            None,
-        )?;
+        let _ = folder.register_task_definition(RegisterTaskDefinitionArgs {
+            task_name: TASK_NAME,
+            task_definition: task,
+            flags: TASK_CREATE_OR_UPDATE as _,
+            user_id: None,
+            password: None,
+            logon_type: TaskLogonType::InteractiveToken,
+            sddl: None,
+        })?;
     }
 
     info!("Installation complete");
@@ -103,7 +100,7 @@ pub fn install(args: &crate::Opts) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn uninstall(args: &crate::Opts) -> std::io::Result<()> {
+pub fn uninstall(args: &crate::Opts) -> TimersetResult<()> {
     let scheduler = WindowsTaskScheduler::new()?;
     scheduler.connect()?;
 
@@ -113,7 +110,7 @@ pub fn uninstall(args: &crate::Opts) -> std::io::Result<()> {
     }
 
     // Delete files
-    let mut dest_path: std::path::PathBuf = std::env::var("PROGRAMFILES").unwrap().into();
+    let mut dest_path: std::path::PathBuf = std::env::var("PROGRAMFILES")?.into();
     dest_path.push("TimerSet");
     debug!("Installation path to be removed: {:?}", dest_path);
     if !args.pretend {

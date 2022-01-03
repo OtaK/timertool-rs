@@ -7,61 +7,65 @@ use log::{error, info};
 
 mod utils;
 
+mod error;
 mod install;
+mod logger;
 mod macros;
 mod standby;
 mod task_scheduler;
 mod timer;
-mod logger;
+pub use self::error::*;
 
-#[derive(Debug, structopt::StructOpt)]
-#[structopt(author = "Mathieu Amiot <amiot.mathieu@gmail.com>")]
 /// TimerSet allows you to change your NT Kernel system timer
 /// Also allows you to monitor Windows Standby List and clean it up when needed
+#[derive(Debug, clap::Parser)]
+#[clap(about, version, author)]
 pub struct Opts {
-    #[structopt(short, long)]
     /// Shows the actions taken but do not modify anything on the system; Also known as a dry run.
+    #[clap(short, long)]
     pretend: bool,
 
-    #[structopt(short, long)]
     /// Installs TimerSet to your system and runs it on startup
+    #[clap(short, long)]
     install: bool,
 
-    #[structopt(short, long)]
     /// Uninstalls TimerSet from your system
+    #[clap(short, long)]
     uninstall: bool,
 
-    #[structopt(short, long)]
     /// Allows to set a custom timer value in μs. Will be clamped between the bounds of allowed timer values.
     /// Also note that sometimes, setting high timer values are rejected by the system and will be lowered down depending
-    /// on which clock source your system is using (TSC tends to lower values by 5μs, HPET does not for instance)
+    /// on which clock source your system is using (TSC tends to lower values by ~5μs, HPET does not for instance)
+    #[clap(short, long)]
     timer: Option<u32>,
 
-    #[structopt(long = "islc")]
     /// Enables Windows Standby List periodic cleaning.
     /// It is akin to how ISLC by Wagnard works.
-    /// Please note that when enabling this, the program will **NOT** be idle at all times and will periodically
-    /// poll the system memory to check whether a cleanup is needed or not.
+    #[clap(long = "islc")]
     clean_standby_list: bool,
 
-    #[structopt(long = "islc-timer", default_value = "10")]
-    /// Standby List periodic cleaning poll interval.
+    /// Standby List anti-kernel DOS throttle timer
+    /// It exists because CreateMemoryResourceNotification can trigger LowMemoryResourceNotifications
+    /// thousands of times per second when they happen (i.e. every system page allocation in a high memory pressure situation, often 4KB)
+    /// resulting in the memory list cleaning paralyzing the system with thousands of tries per second
+    ///
     /// Defaults to 10 seconds which should be enough for most systems without impacting performance.
+    #[clap(long = "islc-timer", default_value = "10")]
     clean_standby_list_poll_freq: u64,
 
-    #[structopt(long = "cscm", default_value = "1024")]
     /// Cached memory threshold where the Windows Standby List will be cleared (in MB)
     /// Defaults to 1024MB (1GB)
+    #[clap(long = "cscm", default_value = "1024")]
     clear_standby_cached_mem: u32,
 
-    #[structopt(long = "csfm", default_value = "1024")]
     /// Free memory threshold where the Windows Standby List will be cleared (in MB)
     /// Defaults to 1024MB (1GB)
+    #[clap(long = "csfm", default_value = "1024")]
     clear_standby_free_mem: u32,
 
-    #[structopt(short, long)]
     /// Prints the possible timer value range for your system.
     /// Please note that it can depend on many factors such as HPET or dynamic/synthetic timers enabled or disabled.
+    #[clap(short, long)]
     values: bool,
 }
 
@@ -71,10 +75,12 @@ fn main() {
 }
 
 #[cfg(windows)]
-#[paw::main]
-fn main(mut args: Opts) -> std::io::Result<()> {
+fn main() -> TimersetResult<()> {
     let mut logger = logger::Logger::new();
-    logger.init();
+    logger.init()?;
+
+    use clap::Parser as _;
+    let mut args = Opts::parse();
 
     if args.pretend {
         info!("--pretend enabled, no action will be taken on the system")

@@ -1,7 +1,3 @@
-// Use std::io::Error::last_os_error for errors.
-// NOTE: For this example I'm simple passing on the OS error.
-// However, customising the error could provide more context
-use std::io::Error;
 use std::ptr;
 
 use winapi::um::handleapi::CloseHandle;
@@ -19,7 +15,7 @@ pub fn is_app_elevated() -> bool {
 ///
 /// This is unlikely to fail but if it does it's even more unlikely that you have admin permissions anyway.
 /// Therefore the public function above simply eats the error and returns a bool.
-fn _is_app_elevated() -> Result<bool, Error> {
+fn _is_app_elevated() -> crate::TimersetResult<bool> {
     let token = QueryAccessToken::from_current_process()?;
     token.is_elevated()
 }
@@ -27,7 +23,7 @@ fn _is_app_elevated() -> Result<bool, Error> {
 /// A safe wrapper around querying Windows access tokens.
 pub struct QueryAccessToken(HANDLE);
 impl QueryAccessToken {
-    pub fn from_current_process() -> Result<Self, Error> {
+    pub fn from_current_process() -> crate::TimersetResult<Self> {
         let mut handle: HANDLE = ptr::null_mut();
         crate::w32_ok!(BOOL OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut handle))?;
         Ok(Self(handle))
@@ -35,7 +31,7 @@ impl QueryAccessToken {
 
     /// On success returns a bool indicating if the access token has elevated privilidges.
     /// Otherwise returns an OS error.
-    pub fn is_elevated(&self) -> Result<bool, Error> {
+    pub fn is_elevated(&self) -> crate::TimersetResult<bool> {
         let mut elevation = TOKEN_ELEVATION::default();
         let size = std::mem::size_of::<TOKEN_ELEVATION>() as u32;
         let mut ret_size = size;
