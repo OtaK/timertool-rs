@@ -144,7 +144,9 @@ fn main() -> TimersetResult<()> {
         }
         drop(args);
         info!("Cleaned up resources and parking till the end of time...");
-        std::thread::park();
+        loop {
+            std::thread::park();
+        }
     }
 
     Ok(())
